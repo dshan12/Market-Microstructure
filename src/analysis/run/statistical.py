@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.stats.sandwich_covariance import cov_hac
-from statsmodels.iolib.summary2 import summary_frame
 import logging
 from typing import Optional, List
 
