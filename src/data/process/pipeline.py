@@ -5,9 +5,7 @@ Phase 2 implementation for quantitative market microstructure research.
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +50,7 @@ class OrderBookDataProcessor:
         logger.info(f"After missing value handling: {len(df)} rows")
         return df
     
-    def synchronize_timestamps(self, df: pd.DataFrame, target_frequency: str = "1S") -> pd.DataFrame:
+    def synchronize_timestamps(self, df: pd.DataFrame, target_frequency: str = "1s") -> pd.DataFrame:
         """Synchronize timestamps and resample data."""
         if df.empty:
             return df
@@ -61,12 +59,47 @@ class OrderBookDataProcessor:
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         df.set_index('timestamp', inplace=True)
         
+        # Select only numeric columns for resampling
+        numeric_df = df.select_dtypes(include=[np.number])
+        
         # Resample to target frequency
-        df_resampled = df.resample(target_frequency).mean()
+        df_resampled = numeric_df.resample(target_frequency).mean()
         df_resampled.reset_index(inplace=True)
         
         logger.info(f"After timestamp synchronization: {len(df_resampled)} rows")
         return df_resampled
+    
+    def standardize_formats(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize column names, data types, and formats."""
+        if df.empty:
+            return df
+        
+        # Ensure standard column names
+        column_mapping = {
+            'best_bid': 'best_bid',
+            'best_ask': 'best_ask',
+            'bid_volume': 'bid_volume',
+            'ask_volume': 'ask_volume',
+            'symbol': 'symbol',
+        }
+        df = df.rename(columns=column_mapping)
+        
+        # Ensure numeric types for key columns
+        numeric_cols = ['best_bid', 'best_ask', 'bid_volume', 'ask_volume']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Ensure timestamp is numeric (milliseconds since epoch)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_numeric(df['timestamp'], errors='coerce')
+        
+        # Ensure symbol is string
+        if 'symbol' in df.columns:
+            df['symbol'] = df['symbol'].astype(str)
+        
+        logger.info("Standardized data formats")
+        return df
     
     def compute_midprice(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute midprice as primary price measure."""
@@ -78,7 +111,7 @@ class OrderBookDataProcessor:
         return df
     
     def compute_future_returns(self, df: pd.DataFrame, horizons: list = [1, 5, 10, 30, 60, 300]) -> pd.DataFrame:
-        """Compute future returns for different horizons."""
+        """Compute future log returns for different horizons."""
         if df.empty:
             return df
         
@@ -86,13 +119,12 @@ class OrderBookDataProcessor:
         df.set_index('timestamp', inplace=True)
         
         for horizon in horizons:
-            # Resample and compute returns for each horizon
             shifted_price = df['midprice'].shift(-horizon)
-            returns = ((shifted_price - df['midprice']) / df['midprice']).shift(-horizon)
-            df[f'return_{horizon}s'] = returns
+            log_returns = (np.log(shifted_price) - np.log(df['midprice'])).shift(-horizon)
+            df[f'return_{horizon}s'] = log_returns
         
         df.reset_index(inplace=True)
-        logger.info(f"Computed future returns for horizons: {horizons}")
+        logger.info(f"Computed future log returns for horizons: {horizons}")
         return df
     
     def process(self, input_file: str, output_file: str = None) -> pd.DataFrame:
@@ -107,6 +139,7 @@ class OrderBookDataProcessor:
         # Apply processing steps
         df = self.remove_duplicates(df)
         df = self.handle_missing_values(df)
+        df = self.standardize_formats(df)
         df = self.synchronize_timestamps(df)
         df = self.compute_midprice(df)
         df = self.compute_future_returns(df)
