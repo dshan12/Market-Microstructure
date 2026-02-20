@@ -6,7 +6,6 @@ Phase 3 implementation for quantitative market microstructure research.
 import pandas as pd
 import numpy as np
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,7 @@ class FeatureEngineer:
         logger.info("Computed liquidity metrics")
         return df
     
-    def engineer_all_features(self, input_file: str, output_file: str = None) -> pd.DataFrame:
+    def engineer_all_features(self, input_file: str, output_file: str | None = None) -> pd.DataFrame:
         """Engineer all features from processed data."""
         logger.info("Starting feature engineering pipeline")
         
