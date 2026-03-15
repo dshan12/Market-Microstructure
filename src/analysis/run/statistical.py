@@ -111,44 +111,91 @@ class StatisticalAnalyzer:
         
         return results
     
-    def run_interaction_models(self, df: pd.DataFrame) -> dict:
-        """Run interaction models to test liquidity's effect on signal strength."""
-        if df.empty:
+    def _fit_hac_model(self, y: pd.Series, X: pd.DataFrame) -> Optional[Dict]:
+        """Fit OLS with HAC standard errors and return structured results."""
+        try:
+            model = sm.OLS(y, X).fit()
+            hac_cov = cov_hac(model, nlags=1)
+            return {
+                'params': model.params.to_dict(),
+                'bse': {k: float(v) for k, v in zip(model.params.index, np.sqrt(np.diag(hac_cov)))},
+                'tvalues': (model.params / np.sqrt(np.diag(hac_cov))).to_dict(),
+                'pvalues': {k: float(2 * stats.t.sf(abs(t), df=model.df_resid))
+                           for k, t in zip(model.params.index, model.params / np.sqrt(np.diag(hac_cov)))},
+                'rsquared': float(model.rsquared),
+                'nobs': int(model.nobs)
+            }
+        except Exception as e:
+            logger.warning(f"HAC model fit failed: {e}")
+            return None
+
+    def run_interaction_models(self, df: pd.DataFrame, horizon: str = 'return_1s') -> dict:
+        """Test whether market conditions moderate the imbalance-return relationship.
+        
+        For each moderator (spread, volatility, volume), fits:
+            return = b0 + b1*imbalance + b2*moderator + b3*(imbalance × moderator)
+        
+        A significant b3 means the signal strength changes with that condition.
+        """
+        if df.empty or 'depth_imbalance' not in df.columns or horizon not in df.columns:
             return {}
         
         results = {}
+        imbalance = 'depth_imbalance'
+        moderators = ['spread', 'volatility', 'volume']
+        available = [m for m in moderators if m in df.columns and df[m].nunique() > 1]
         
-        # Create interaction term: Imbalance × Spread
-        if 'depth_imbalance' in df.columns and 'spread' in df.columns:
-            df['imbalance_spread_interaction'] = df['depth_imbalance'] * df['spread']
-            
-            # Prepare data
-            X = df[['depth_imbalance', 'spread', 'imbalance_spread_interaction']].dropna()
-            y = df.loc[X.index, 'return_1s']
-            
-            if len(X) > 0:
-                X = sm.add_constant(X)
-                
-                try:
-                    model = sm.OLS(y, X).fit()
-                    
-                    # Get HAC standard errors
-                    hac_cov = cov_hac(model, nlags=1)
-                    model_hac = type('HACModel', (object,), {
-                        'params': model.params,
-                        'bse': np.sqrt(np.diag(hac_cov)),
-                        'tvalues': model.params / np.sqrt(np.diag(hac_cov)),
-                        'pvalues': 2 * stats.t.sf(abs(model.tvalues), df=model.df_resid),
-                        'rsquared': model.rsquared
-                    })()
-                    
-                    results['interaction_model'] = model_hac
-                    results['interaction_rsquared'] = model.rsquared
-                    
-                    logger.info(f"Interaction model completed. R-squared: {model.rsquared:.4f}")
-                    
-                except Exception as e:
-                    logger.error(f"Error running interaction model: {e}")
+        for mod in available:
+            df_mod = df[[imbalance, mod, horizon]].dropna().copy()
+            if len(df_mod) < 100:
+                continue
+            df_mod['interaction'] = df_mod[imbalance] * df_mod[mod]
+            X = sm.add_constant(df_mod[[imbalance, mod, 'interaction']])
+            y = df_mod[horizon]
+            fit = self._fit_hac_model(y, X)
+            if fit is not None:
+                results[mod] = fit
+                logger.info(
+                    f"Interaction({imbalance} × {mod}): β_interaction={fit['params'].get('interaction', 0):.6f}, "
+                    f"p={fit['pvalues'].get('interaction', 1):.4f}, R²={fit['rsquared']:.4f}"
+                )
+        
+        return results
+
+    def run_regime_analysis(self, df: pd.DataFrame, horizon: str = 'return_1s') -> dict:
+        """Split data into quintiles by spread, volatility, volume and compute
+        the imbalance-return correlation within each regime.
+        
+        Answers: does the signal strengthen or weaken in certain market conditions?
+        """
+        if df.empty or 'depth_imbalance' not in df.columns or horizon not in df.columns:
+            return {}
+        
+        results = {}
+        factors = ['spread', 'volatility', 'volume']
+        available = [f for f in factors if f in df.columns and df[f].nunique() > 1]
+        
+        for factor in available:
+            valid = df[['depth_imbalance', horizon, factor]].dropna()
+            if len(valid) < 100:
+                continue
+            valid['quintile'] = pd.qcut(valid[factor], 5, labels=[1, 2, 3, 4, 5])
+            quintile_results = []
+            for q in range(1, 6):
+                subset = valid[valid['quintile'] == q]
+                if len(subset) < 10:
+                    continue
+                corr = subset['depth_imbalance'].corr(subset[horizon])
+                q_mean = subset[factor].mean()
+                quintile_results.append({
+                    'quintile': q,
+                    f'mean_{factor}': float(q_mean),
+                    'correlation': float(corr),
+                    'n': int(len(subset))
+                })
+            results[factor] = quintile_results
+            corrs = [q['correlation'] for q in quintile_results]
+            logger.info(f"Regime({factor}): correlations by quintile = {[f'{c:.4f}' for c in corrs]}")
         
         return results
     
@@ -290,6 +337,7 @@ class StatisticalAnalyzer:
         correlations = self.run_correlation_analysis(df)
         ols_results = self.run_ols_regressions(df)
         interaction_results = self.run_interaction_models(df)
+        regime_results = self.run_regime_analysis(df)
         signal_decay = self.run_signal_decay_analysis(df)
         
         # Compile results
@@ -297,6 +345,7 @@ class StatisticalAnalyzer:
             'correlations': correlations,
             'ols_regression': ols_results,
             'interaction_model': interaction_results,
+            'regime_analysis': regime_results,
             'signal_decay': signal_decay,
             'sample_size': len(df)
         }

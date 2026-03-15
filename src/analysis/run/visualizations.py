@@ -165,7 +165,48 @@ class VisualizationGenerator:
         plt.tight_layout()
         return fig
 
-    def generate_all_visualizations(self, input_file: str, output_dir: str = "plots"):
+    def plot_interaction_analysis(self, df: pd.DataFrame, results: dict):
+        """Three-panel plot showing how imbalance-return correlation varies across
+        spread, volatility, and volume quintiles (RQ3: When does imbalance matter most?)."""
+        if df.empty or 'depth_imbalance' not in df.columns:
+            return None
+        
+        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        factors = ['spread', 'volatility', 'volume']
+        titles = ['Spread (Liquidity)', 'Volatility', 'Volume (Activity)']
+        ylabels = ['Spread Size', 'Volatility', 'Volume']
+        
+        for idx, (factor, title, ylabel) in enumerate(zip(factors, titles, ylabels)):
+            ax = axes[idx]
+            regime = results.get('regime_analysis', {}).get(factor, [])
+            if not regime:
+                ax.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax.transAxes)
+                continue
+            
+            q_labels = [str(r['quintile']) for r in regime]
+            corrs = [r['correlation'] for r in regime]
+            colors = ['#2ecc71' if c > 0 else '#e74c3c' for c in corrs]
+            
+            bars = ax.bar(q_labels, corrs, color=colors, edgecolor='gray', linewidth=0.5)
+            ax.axhline(y=0, color='black', linewidth=0.5)
+            ax.set_xlabel(f'{ylabel} Quintile\n(Low → High)')
+            ax.set_ylabel('Imbalance-Return Correlation')
+            ax.set_title(f'Signal Strength by {title}', fontweight='bold', fontsize=12)
+            
+            for bar, corr in zip(bars, corrs):
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(),
+                        f'{corr:.4f}', ha='center', va='bottom' if corr > 0 else 'top',
+                        fontsize=8)
+            
+            ax.tick_params(axis='x', labelsize=9)
+            ax.grid(axis='y', alpha=0.3)
+        
+        fig.suptitle('RQ3: When Does Order Book Imbalance Matter Most?',
+                     fontweight='bold', fontsize=14, y=1.02)
+        plt.tight_layout()
+        return fig
+
+    def generate_all_visualizations(self, input_file: str, output_dir: str = "plots", results: dict = None):
         """Generate all EDA visualizations."""
         logger.info("Starting visualization generation pipeline")
         
@@ -180,6 +221,15 @@ class VisualizationGenerator:
         
         # Generate visualizations
         visualizations = {}
+        
+        # 0. RQ3: Interaction / regime analysis plot
+        if results is not None:
+            fig = self.plot_interaction_analysis(df, results)
+            if fig:
+                fig.savefig(f"{output_dir}/signal_by_regime.png", dpi=300, bbox_inches='tight')
+                plt.close(fig)
+                visualizations['signal_by_regime'] = f"{output_dir}/signal_by_regime.png"
+                logger.info("Saved signal-by-regime interaction plot")
         
         # 1. Distribution of imbalance
         if 'depth_imbalance' in df.columns:
@@ -245,6 +295,15 @@ class VisualizationGenerator:
         logger.info(f"Generated {len(visualizations)} visualizations")
         return visualizations
 
+def generate_all(output_dir: str = "plots", feature_file: str = "data/features/btcusdt_features.csv"):
+    """Full pipeline: run analysis then generate all visualizations."""
+    from .statistical import StatisticalAnalyzer
+    sa = StatisticalAnalyzer()
+    results = sa.run_statistical_analysis(feature_file)
+    vg = VisualizationGenerator(output_dir=output_dir)
+    vg.generate_all_visualizations(input_file=feature_file, output_dir=output_dir, results=results)
+    return results
+
 def main():
     """Main entry point for visualization generation."""
     import argparse
@@ -252,11 +311,17 @@ def main():
     parser = argparse.ArgumentParser(description="Visualization Generation Pipeline")
     parser.add_argument("--input", required=True, help="Input CSV file path")
     parser.add_argument("--output", default="plots", help="Output directory for plots (default: plots)")
+    parser.add_argument("--results", default=None, help="Optional results JSON for interaction plots")
     
     args = parser.parse_args()
     
     visualizer = VisualizationGenerator(output_dir=args.output)
-    visualizer.generate_all_visualizations(input_file=args.input, output_dir=args.output)
+    results = None
+    if args.results:
+        import json
+        with open(args.results) as f:
+            results = json.load(f)
+    visualizer.generate_all_visualizations(input_file=args.input, output_dir=args.output, results=results)
 
 if __name__ == "__main__":
     main()

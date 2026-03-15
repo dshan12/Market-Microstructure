@@ -89,9 +89,9 @@ class FeatureEngineer:
         if 'volume' not in df.columns:
             if 'bid_volume' in df.columns and 'ask_volume' in df.columns:
                 df['volume'] = df['bid_volume'] + df['ask_volume']
+                logger.info("Computed volume metric from bid+ask volume")
             else:
-                df['volume'] = 1.0
-            logger.info("Computed volume metric")
+                logger.info("No volume data available (skipping)")
 
         if 'trade_count' not in df.columns:
             df['trade_count'] = 1

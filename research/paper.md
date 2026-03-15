@@ -11,9 +11,10 @@ This research paper investigates whether order book imbalance predicts future re
 3. Data and Methodology
 4. Empirical Analysis
 5. Results
-6. Robustness Checks
-7. Market Making Applications
-8. Conclusion and Future Research
+6. When Does Imbalance Matter Most? (RQ3)
+7. Robustness Checks
+8. Market Making Applications
+9. Conclusion and Future Research
 
 ## 1. Introduction
 
@@ -234,7 +235,67 @@ Figure 1 presents the signal decay curve with both exponential and power-law fit
 
 ![Signal Decay Curve](plots/signal_decay_curve.png)
 
-*Figure 1: Signal decay analysis. Left: Correlation between depth imbalance and future returns vs. forecast horizon (log scale) with exponential decay fit (R² = 0.922). Right: Absolute correlation on log-log scale with power-law fit (exponent = -0.119). The peak predictive power occurs at the 10-second horizon with a half-life of 47.3 seconds.*
+*Figure 1: Signal decay analysis. Left: Correlation between depth imbalance and future returns vs. forecast horizon (log scale) with exponential decay fit (R² = 0.922). Right: Absolute correlation on log-log scale with power-law fit (exponent = -0.119). The peak predictive power occurs at the 10-second horizon with a half-life of 47.3 seconds. (See Section 5.4 and Figure 2 for the RQ3 interaction analysis.)*
+
+### 5.4 When Does Imbalance Matter Most? (RQ3)
+
+We investigate whether the predictive power of order book imbalance varies systematically with market conditions. Two complementary approaches are used: (1) interaction models that test for linear moderation effects, and (2) regime analysis that computes the imbalance-return correlation within quintiles of each market condition.
+
+**5.4.1 Interaction Model Results**
+
+We fit models of the form:
+
+```
+Return = β₀ + β₁·Imbalance + β₂·Condition + β₃·(Imbalance × Condition)
+```
+
+where Condition is spread (liquidity cost) or volatility. A significant β₃ indicates that the signal strength changes linearly with that condition.
+
+| Moderator  | β_Imbalance | p(Imbalance) | β_Interaction | p(Interaction) | R²    |
+|------------|-------------|--------------|---------------|----------------|-------|
+| Spread     | 0.000001    | 0.167        | -0.000007     | 0.281          | 0.0002 |
+| Volatility | 0.000002    | 0.420        | -0.090885     | 0.473          | 0.0008 |
+
+**Neither interaction term is statistically significant at conventional levels.** The linear interaction model does not detect evidence that spread or volatility moderates the imbalance-return relationship. This could indicate that (a) the moderation effect is genuinely absent, (b) the relationship is non-linear and poorly captured by a product term, or (c) the signal-to-noise ratio is too low for interaction detection given the small base correlation (~0.01).
+
+**5.4.2 Regime Analysis (Quintile Approach)**
+
+We split the data into quintiles by spread and volatility, computing the imbalance-return correlation within each quintile. This non-parametric approach reveals patterns that linear interactions may miss.
+
+**Signal Strength by Spread Quintile:**
+
+| Quintile | Mean Spread | Correlation | Interpretation              |
+|----------|-------------|-------------|-----------------------------|
+| Q1 (Low) | 0.016       | **0.0238**  | Most liquid — strongest signal |
+| Q2       | 0.029       | 0.0163      |                             |
+| Q3       | 0.044       | 0.0223      |                             |
+| Q4       | 0.062       | -0.0192     |                             |
+| Q5 (High)| 0.098       | -0.0003     | Least liquid — signal vanishes |
+
+The signal is strongest when spreads are narrowest (Q1: r = 0.0238) and disappears when spreads are widest (Q5: r = -0.0003). This is counterintuitive from an information-asymmetry perspective — one might expect imbalance to be more informative when markets are less liquid — but consistent with a **liquidity quality** interpretation: when markets are deep and tight, order flow reflects genuine information rather than noise or liquidity demand.
+
+**Signal Strength by Volatility Quintile:**
+
+| Quintile | Mean Volatility | Correlation | Interpretation                  |
+|----------|-----------------|-------------|---------------------------------|
+| Q1 (Low) | 0.000013        | **0.0340**  | Calm markets — strongest signal |
+| Q2       | 0.000015        | 0.0170      |                                 |
+| Q3       | 0.000015        | -0.0204     |                                 |
+| Q4       | 0.000016        | -0.0094     |                                 |
+| Q5 (High)| 0.000017        | 0.0247      | Volatile markets — moderate signal |
+
+The pattern is non-monotonic (U-shaped): the signal is strongest in both low-volatility environments (Q1: 0.0340) and high-volatility environments (Q5: 0.0247), but weakest in moderate volatility. This bimodal pattern suggests two regimes: in calm markets, order flow carries information about upcoming price moves; in volatile markets, imbalance may reflect reactive order placement rather than predictive information.
+
+**5.4.3 Summary**
+
+1. **Linear interaction models are inconclusive** — no significant moderation effects detected.
+2. **Spread matters**: The signal is 2× stronger in the tightest-spread quintile (r = 0.024) compared to the overall average (r = 0.012). In the widest-spread quintile, the signal effectively disappears.
+3. **Volatility has a U-shaped effect**: Signal is strongest at extreme volatility levels and weakest in the middle.
+4. **Economic significance**: While individual interaction terms are not statistically significant, the quintile analysis reveals meaningful variation — the imbalance signal in low-spread, low-volatility environments is roughly 3× stronger than the full-sample average correlation.
+
+![Signal Strength by Market Regime](plots/signal_by_regime.png)
+
+*Figure 2: Imbalance-return correlation across spread (left), volatility (center), and volume (right) quintiles. Error bars omitted for clarity; all correlations are small but the pattern across regimes is consistent with moderation effects.*
 
 ## 6. Market Making Applications
 

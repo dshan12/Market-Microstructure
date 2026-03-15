@@ -8,12 +8,132 @@
     "return_300s": -0.007415307684346859
   },
   "ols_regression": {
-    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7fb550e6b950>",
+    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f1d76712480>",
     "rsquared": 0.0006590181632616376
   },
   "interaction_model": {
-    "interaction_model": "<src.analysis.run.statistical.HACModel object at 0x7fb550e6bef0>",
-    "interaction_rsquared": NaN
+    "spread": {
+      "params": {
+        "const": -9.686438298340203e-09,
+        "depth_imbalance": 5.291593298352363e-07,
+        "spread": -7.395386140102365e-07,
+        "interaction": -7.262236350040092e-06
+      },
+      "bse": {
+        "const": 1.2987260999783763e-07,
+        "depth_imbalance": 3.830467970226476e-07,
+        "spread": 2.005799020223434e-06,
+        "interaction": 6.731728047359897e-06
+      },
+      "tvalues": {
+        "const": -0.07458415056493807,
+        "depth_imbalance": 1.381448256318274,
+        "spread": -0.36870025688209596,
+        "interaction": -1.0788071501029004
+      },
+      "pvalues": {
+        "const": 0.9405470789443271,
+        "depth_imbalance": 0.1671720845548331,
+        "spread": 0.712358973392954,
+        "interaction": 0.28069976359882187
+      },
+      "rsquared": 0.000194360495816448,
+      "nobs": 9990
+    },
+    "volatility": {
+      "params": {
+        "const": -1.369665762600713e-06,
+        "depth_imbalance": 1.5681833421311927e-06,
+        "volatility": 0.08578544898525557,
+        "interaction": -0.0908846062998208
+      },
+      "bse": {
+        "const": 7.403044282940286e-07,
+        "depth_imbalance": 1.94642131910603e-06,
+        "volatility": 0.048351381118721545,
+        "interaction": 0.1265965569481687
+      },
+      "tvalues": {
+        "const": -1.8501385514564546,
+        "depth_imbalance": 0.8056751776904304,
+        "volatility": 1.7742088643676746,
+        "interaction": -0.7179074098913358
+      },
+      "pvalues": {
+        "const": 0.06432310305486628,
+        "depth_imbalance": 0.4204493495103492,
+        "volatility": 0.07605907169536677,
+        "interaction": 0.47283117284348647
+      },
+      "rsquared": 0.0007595117921519456,
+      "nobs": 9990
+    }
+  },
+  "regime_analysis": {
+    "spread": [
+      {
+        "quintile": 1,
+        "mean_spread": 0.016132754057970038,
+        "correlation": 0.023801477491990054,
+        "n": 1998
+      },
+      {
+        "quintile": 2,
+        "mean_spread": 0.029249393280377477,
+        "correlation": 0.016277251800751888,
+        "n": 1998
+      },
+      {
+        "quintile": 3,
+        "mean_spread": 0.04386090258718271,
+        "correlation": 0.022270351995714855,
+        "n": 1998
+      },
+      {
+        "quintile": 4,
+        "mean_spread": 0.06187716533455017,
+        "correlation": -0.019218909537694295,
+        "n": 1998
+      },
+      {
+        "quintile": 5,
+        "mean_spread": 0.09798431062897434,
+        "correlation": -0.00029686232276991285,
+        "n": 1998
+      }
+    ],
+    "volatility": [
+      {
+        "quintile": 1,
+        "mean_volatility": 1.3227510531546236e-05,
+        "correlation": 0.03400416666003448,
+        "n": 1998
+      },
+      {
+        "quintile": 2,
+        "mean_volatility": 1.4671960885307139e-05,
+        "correlation": 0.01704774405846318,
+        "n": 1998
+      },
+      {
+        "quintile": 3,
+        "mean_volatility": 1.5483091747055795e-05,
+        "correlation": -0.020435231158324945,
+        "n": 1998
+      },
+      {
+        "quintile": 4,
+        "mean_volatility": 1.6245671359379047e-05,
+        "correlation": -0.009404894735611954,
+        "n": 1998
+      },
+      {
+        "quintile": 5,
+        "mean_volatility": 1.742891234876141e-05,
+        "correlation": 0.024699177277525203,
+        "n": 1998
+      }
+    ]
   },
   "signal_decay": {
     "horizons": [
