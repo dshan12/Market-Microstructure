@@ -8,7 +8,7 @@
     "return_300s": -0.007415307684346859
   },
   "ols_regression": {
-    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f1d76712480>",
+    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f34a7c34cb0>",
     "rsquared": 0.0006590181632616376
   },
   "interaction_model": {
@@ -168,5 +168,39 @@
       "r_squared": 0.7169156098217416
     }
   },
-  "sample_size": 10000
+  "sample_size": 10000,
+  "market_making": {
+    "Basic": {
+      "trades": "      step      midprice  ...  volatility  cumulative_pnl\n0        0  50000.401719  ...    0.000000        0.000000\n1        1  50000.355146  ...    0.000000        0.072858\n2        2  50000.379343  ...    0.000000        0.062361\n3        3  50000.188015  ...    0.000000        0.270338\n4        4  50000.015523  ...    0.000000        0.295912\n...    ...           ...  ...         ...             ...\n9984  9984  49997.890257  ...    0.000016     -224.344366\n9985  9985  49998.020367  ...    0.000016     -219.775813\n9986  9986  49997.820533  ...    0.000017     -226.930420\n9987  9987  49997.750001  ...    0.000017     -229.525634\n9988  9988  49997.799578  ...    0.000017     -227.693039\n\n[9989 rows x 14 columns]",
+      "stats": {
+        "total_pnl": -227.69,
+        "sharpe_ratio": -6.828,
+        "max_drawdown": -404.5,
+        "max_drawdown_pct": -1.0,
+        "gross_spread_pnl": 461.16,
+        "inventory_pnl": -688.85,
+        "inventory_volatility": 31.4899,
+        "trade_count": 9261,
+        "avg_spread": 0.049817,
+        "spread_capture_pct": 92.7,
+        "n_steps": 9989
+      }
+    },
+    "Adaptive": {
+      "trades": "      step      midprice  ...  volatility  cumulative_pnl\n0        0  50000.401719  ...    0.000000        0.000000\n1        1  50000.355146  ...    0.000000        0.076392\n2        2  50000.379343  ...    0.000000        0.072559\n3        3  50000.188015  ...    0.000000        0.285762\n4        4  50000.015523  ...    0.000000        0.307324\n...    ...           ...  ...         ...             ...\n9984  9984  49997.890257  ...    0.000016        5.684193\n9985  9985  49998.020367  ...    0.000016       10.269987\n9986  9986  49997.820533  ...    0.000017        3.137724\n9987  9987  49997.750001  ...    0.000017        0.554795\n9988  9988  49997.799578  ...    0.000017        2.408069\n\n[9989 rows x 14 columns]",
+      "stats": {
+        "total_pnl": 2.41,
+        "sharpe_ratio": 0.072,
+        "max_drawdown": -283.44,
+        "max_drawdown_pct": -1.0,
+        "gross_spread_pnl": 919.92,
+        "inventory_pnl": -917.51,
+        "inventory_volatility": 31.4899,
+        "trade_count": 9261,
+        "avg_spread": 0.049817,
+        "spread_capture_pct": 92.7,
+        "n_steps": 9989
+      }
+    }
+  }
 }

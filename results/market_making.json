@@ -1,0 +1,32 @@
+{
+  "Basic": {
+    "stats": {
+      "total_pnl": -227.69,
+      "sharpe_ratio": -6.828,
+      "max_drawdown": -404.5,
+      "max_drawdown_pct": -1.0,
+      "gross_spread_pnl": 461.16,
+      "inventory_pnl": -688.85,
+      "inventory_volatility": 31.4899,
+      "trade_count": 9261,
+      "avg_spread": 0.049817,
+      "spread_capture_pct": 92.7,
+      "n_steps": 9989
+    }
+  },
+  "Adaptive": {
+    "stats": {
+      "total_pnl": 2.41,
+      "sharpe_ratio": 0.072,
+      "max_drawdown": -283.44,
+      "max_drawdown_pct": -1.0,
+      "gross_spread_pnl": 919.92,
+      "inventory_pnl": -917.51,
+      "inventory_volatility": 31.4899,
+      "trade_count": 9261,
+      "avg_spread": 0.049817,
+      "spread_capture_pct": 92.7,
+      "n_steps": 9989
+    }
+  }
+}

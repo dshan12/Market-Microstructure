@@ -206,6 +206,47 @@ class VisualizationGenerator:
         plt.tight_layout()
         return fig
 
+    def plot_market_making(self, sim_results: dict):
+        """Plot market making results: cumulative PnL, inventory, and drawdown."""
+        if not sim_results:
+            return None
+
+        fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
+
+        colors = {'Basic': '#e74c3c', 'Adaptive': '#2ecc71'}
+
+        for name, result in sim_results.items():
+            trades = result['trades']
+            c = colors.get(name, '#3498db')
+            label = f"{name} MM"
+            axes[0].plot(trades['step'], trades['cumulative_pnl'], color=c, lw=1.5, label=label)
+            axes[1].plot(trades['step'], trades['inventory'], color=c, lw=1, alpha=0.8, label=label)
+            cum_pnl = trades['pnl'].fillna(0).cumsum()
+            peak = cum_pnl.expanding().max()
+            dd = cum_pnl - peak
+            axes[2].fill_between(trades['step'], dd, 0, color=c, alpha=0.3, label=label)
+
+        axes[0].set_ylabel('Cumulative PnL')
+        axes[0].set_title('Market Making Simulation: PnL Comparison', fontweight='bold')
+        axes[0].legend()
+        axes[0].axhline(y=0, color='gray', ls='--', alpha=0.5)
+        axes[0].grid(alpha=0.3)
+
+        axes[1].set_ylabel('Inventory Position')
+        axes[1].set_title('Inventory Over Time', fontweight='bold')
+        axes[1].legend()
+        axes[1].axhline(y=0, color='gray', ls='--', alpha=0.5)
+        axes[1].grid(alpha=0.3)
+
+        axes[2].set_xlabel('Time Step')
+        axes[2].set_ylabel('Drawdown')
+        axes[2].set_title('Drawdown', fontweight='bold')
+        axes[2].legend()
+        axes[2].grid(alpha=0.3)
+
+        plt.tight_layout()
+        return fig
+
     def generate_all_visualizations(self, input_file: str, output_dir: str = "plots", results: dict = None):
         """Generate all EDA visualizations."""
         logger.info("Starting visualization generation pipeline")
@@ -292,14 +333,32 @@ class VisualizationGenerator:
             visualizations['decile_analysis'] = f"{output_dir}/decile_analysis.png"
             logger.info("Saved decile analysis plot")
         
+        # 6. Market making simulation (RQ4)
+        if results is not None and 'market_making' in results:
+            fig = self.plot_market_making(results['market_making'])
+            if fig:
+                fig.savefig(f"{output_dir}/market_making_pnl.png", dpi=300, bbox_inches='tight')
+                plt.close(fig)
+                visualizations['market_making'] = f"{output_dir}/market_making_pnl.png"
+                logger.info("Saved market making PnL plot")
+        
         logger.info(f"Generated {len(visualizations)} visualizations")
         return visualizations
 
 def generate_all(output_dir: str = "plots", feature_file: str = "data/features/btcusdt_features.csv"):
-    """Full pipeline: run analysis then generate all visualizations."""
+    """Full pipeline: run analysis + MM simulation then generate all visualizations."""
     from .statistical import StatisticalAnalyzer
+    from .market_making import MarketMakingSimulator, BasicMarketMaker, AdaptiveMarketMaker
+
     sa = StatisticalAnalyzer()
     results = sa.run_statistical_analysis(feature_file)
+
+    df = pd.read_csv(feature_file)
+    sim = MarketMakingSimulator(df)
+    mm_strategies = [BasicMarketMaker(), AdaptiveMarketMaker(skew_strength=0.5, vol_mult=2.0)]
+    mm_results = sim.run(mm_strategies)
+    results['market_making'] = mm_results
+
     vg = VisualizationGenerator(output_dir=output_dir)
     vg.generate_all_visualizations(input_file=feature_file, output_dir=output_dir, results=results)
     return results

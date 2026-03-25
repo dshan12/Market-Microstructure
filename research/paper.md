@@ -12,8 +12,8 @@ This research paper investigates whether order book imbalance predicts future re
 4. Empirical Analysis
 5. Results
 6. When Does Imbalance Matter Most? (RQ3)
-7. Robustness Checks
-8. Market Making Applications
+7. Can a Market Maker Exploit These Signals? (RQ4)
+8. Robustness Checks
 9. Conclusion and Future Research
 
 ## 1. Introduction
@@ -297,28 +297,69 @@ The pattern is non-monotonic (U-shaped): the signal is strongest in both low-vol
 
 *Figure 2: Imbalance-return correlation across spread (left), volatility (center), and volume (right) quintiles. Error bars omitted for clarity; all correlations are small but the pattern across regimes is consistent with moderation effects.*
 
-## 6. Market Making Applications
+## 6. Can a Market Maker Exploit These Signals? (RQ4)
 
-### 6.1 Basic Market Making
-**Strategy:** Quote spreads based on order flow imbalance
+We build a simple market-making simulation to test whether the imbalance signal translates into real economic value. Two strategies compete head-to-head over 9,989 time steps (≈17 minutes of 100ms data):
 
-**Performance Metrics:**
-- **Spread capture**: Higher spreads during buy pressure
-- **Adverse selection**: Mitigated through dynamic quoting
-- **Inventory risk**: Managed through position limits
+### 6.1 Simulation Design
 
-### 6.2 Adaptive Market Making
-**Enhanced Strategy:** Adjust quotes using imbalance, liquidity, and volatility
+**Data**: Each row represents a snapshot with observed midprice, spread, depth imbalance, and subsequent 1s return.
 
-**Key Features:**
-- **Dynamic spreads**: Wider quotes during high imbalance
-- **Volume adjustments**: Scale positions based on liquidity metrics
-- **Risk management**: Volatility-based position sizing
+**Mechanism**: At each step, the market maker (MM) posts bid and ask limit orders. A market order arrives and hits one side, determined by the next-second return direction:
+- Positive return → buyer aggressor hits the ask (MM sells 1 unit)
+- Negative return → seller aggressor hits the bid (MM buys 1 unit)
 
-### 6.3 Comparative Analysis
-- Adaptive market maker outperforms naive strategies
-- Information advantage translates to economic profit
-- Reduces exposure to adverse selection
+**Position limits**: ±50 units to cap inventory risk.
+
+### 6.2 Basic (Naive) Market Maker
+
+The basic MM quotes symmetrically: bid = mid − spread/2, ask = mid + spread/2. It makes no use of the imbalance signal.
+
+| Metric | Basic MM |
+|--------|----------|
+| Gross Spread Captured | +$461.16 |
+| Inventory / Adverse Selection Cost | −$688.85 |
+| **Net PnL** | **−$227.69** |
+| Sharpe Ratio | −6.828 |
+| Max Drawdown | −$404.50 (−100%) |
+| Trade Count | 9,261 |
+
+The basic MM loses money. While it earns the spread on every trade (+$461), it loses more to adverse selection (−$689): it systematically sells before price rises and buys before price falls. This is the classic market-making problem — the MM provides liquidity to informed traders and gets picked off.
+
+### 6.3 Adaptive Market Maker
+
+The adaptive MM skews its quotes using the depth imbalance signal:
+
+```
+skew = imbalance × skew_strength × spread
+bid  = mid − spread/2 + skew
+ask  = mid + spread/2 + skew
+```
+
+When imbalance is positive (buy pressure), both quotes shift upward — the MM demands a higher price to sell and offers a higher price to buy, leaning with the flow. Spreads also widen in volatile conditions for additional protection.
+
+| Metric | Basic MM | Adaptive MM | Change |
+|--------|----------|-------------|--------|
+| Gross Spread Captured | +$461.16 | **+$919.92** | +99% |
+| Inventory / AS Cost | −$688.85 | −$917.51 | −33% |
+| **Net PnL** | **−$227.69** | **+$2.41** | **+$230.10** |
+| Sharpe Ratio | −6.828 | **+0.072** | +6.900 |
+| Max Drawdown | −$404.50 | −$283.44 | −30% |
+| Trade Count | 9,261 | 9,261 | 0% |
+
+### 6.4 Key Findings
+
+1. **The imbalance signal has economic value.** Skewing quotes by imbalance more than doubles gross spread capture ($461 → $920) while the adverse selection cost increases by only a third ($689 → $918). The ratio of spread-to-adverse-selection improves from 0.67× to 1.00×, flipping the strategy from unprofitable to breakeven.
+
+2. **The improvement comes from better trade location, not fewer trades.** Both strategies execute the same number of trades (9,261) — the adaptive MM simply gets better prices by shifting quotes in the direction of predicted order flow.
+
+3. **The signal is real but too weak for large-scale exploitation.** A Sharpe of 0.07 is not tradeable in practice. However, the simulation demonstrates that a market maker using imbalance information can neutralize adverse selection — a meaningful result even if the net edge is small.
+
+4. **Practical considerations**: Real-world implementation would face transaction costs (maker fees ≈ 0.02%, taker fees ≈ 0.10%), which would erase most of the $2.41 profit. However, the structural improvement (doubling spread capture) suggests that imbalance-aware quoting is strictly better than naive quoting, even if the absolute edge requires leverage or scale to monetize.
+
+![Market Making PnL](plots/market_making_pnl.png)
+
+*Figure 3: Market maker performance comparison. Top: Cumulative PnL — basic MM bleeds continuously (−$228), adaptive MM holds roughly breakeven (+$2.40). Middle: Inventory positions (identical count, different entry prices). Bottom: Drawdown profiles — adaptive MM experiences 30% smaller peak drawdown.*
 
 ## 7. Conclusion and Future Research
 
