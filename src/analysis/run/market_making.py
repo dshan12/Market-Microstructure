@@ -146,7 +146,7 @@ class MarketMakingSimulator:
             }
             logger.info(f"  {mm.name} MM: PnL={stats['total_pnl']:.2f}, "
                         f"Sharpe={stats['sharpe_ratio']:.3f}, "
-                        f"MaxDD={stats['max_drawdown']:.2%}, "
+                        f"MaxDD={stats['max_drawdown_pct']:.2%}, "
                         f"SpreadCapture={stats['spread_capture_pct']:.1f}%")
 
         self.results = results

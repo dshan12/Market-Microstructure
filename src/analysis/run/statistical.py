@@ -324,6 +324,153 @@ class StatisticalAnalyzer:
             }
         return result
     
+    def run_causality_analysis(self, df: pd.DataFrame) -> dict:
+        """Investigate WHY the imbalance-return signal exists (RQ5).
+
+        Tests four competing explanations:
+          1. Information arrival: imbalance → returns (one-directional flow)
+          2. Liquidity shocks: signal concentrates around spread/volatility events
+          3. Temporary order pressure: signal reverses at longer horizons
+          4. Market inefficiency: signal is exploitable (already tested in RQ4)
+        """
+        if df.empty or 'depth_imbalance' not in df.columns or 'return_1s' not in df.columns:
+            return {}
+
+        results = {}
+        imbalance = 'depth_imbalance'
+
+        # --- 1. Lead-Lag Cross-Correlation ---
+        # If imbalance predicts returns more than returns predict imbalance,
+        # that supports information arrival over mechanical price pressure.
+        lead_corrs = {}
+        lag_corrs = {}
+        valid = df[[imbalance, 'return_1s']].dropna()
+        for k in range(1, 11):
+            lead_corrs[f'imbalance_t → return_t+{k}'] = float(
+                valid[imbalance].corr(valid['return_1s'].shift(-k))
+            )
+            lag_corrs[f'return_t → imbalance_t+{k}'] = float(
+                valid['return_1s'].corr(valid[imbalance].shift(-k))
+            )
+        results['lead_lag'] = {
+            'imbalance_leads_returns': lead_corrs,
+            'returns_lead_imbalance': lag_corrs,
+        }
+        avg_fwd = np.mean(list(lead_corrs.values()))
+        avg_bwd = np.mean(list(lag_corrs.values()))
+        results['lead_lag_summary'] = {
+            'avg_imbalance_predicts_returns': round(float(avg_fwd), 6),
+            'avg_returns_predict_imbalance': round(float(avg_bwd), 6),
+            'direction': 'imbalance_leads' if abs(avg_fwd) > abs(avg_bwd) else 'returns_lead',
+            'asymmetry_ratio': round(float(abs(avg_fwd) / max(abs(avg_bwd), 1e-12)), 3),
+        }
+        logger.info(
+            f"Causality: imbalance→returns avg corr={avg_fwd:.4f}, "
+            f"returns→imbalance avg corr={avg_bwd:.4f}, "
+            f"ratio={results['lead_lag_summary']['asymmetry_ratio']:.2f}"
+        )
+
+        # --- 2. Granger Causality ---
+        try:
+            from statsmodels.tsa.stattools import grangercausalitytests
+            gc_data = df[[imbalance, 'return_1s']].dropna().values
+            if len(gc_data) > 100:
+                gc_result = grangercausalitytests(gc_data, maxlag=5, verbose=False)
+                f_stats = {}
+                for lag, result in gc_result.items():
+                    f_stats[f'lag_{lag}'] = {
+                        'ssr_f': float(result[0]['ssr_ftest'][0]),
+                        'ssr_p': float(result[0]['ssr_ftest'][1]),
+                    }
+                best_lag = min(
+                    (lag for lag in f_stats if f_stats[lag]['ssr_p'] < 0.10),
+                    key=lambda l: f_stats[l]['ssr_p'], default=None
+                )
+                results['granger_causality'] = {
+                    'test': 'imbalance → return_1s',
+                    'results': f_stats,
+                    'best_lag': best_lag,
+                    'significant': any(f_stats[l]['ssr_p'] < 0.05 for l in f_stats),
+                }
+                logger.info(
+                    f"Granger causality: {'significant' if results['granger_causality']['significant'] else 'not significant'}, "
+                    f"best lag={best_lag}"
+                )
+        except Exception as e:
+            logger.warning(f"Granger causality test failed: {e}")
+
+        # --- 3. Imbalance Persistence ---
+        # AR(1) coefficient measures how much information persists in order flow.
+        try:
+            imp_vals = df[imbalance].dropna().values
+            ar1_corr = float(pd.Series(imp_vals[:-1]).corr(pd.Series(imp_vals[1:])))
+            half_life_imp = abs(np.log(2) / np.log(abs(ar1_corr))) if abs(ar1_corr) < 1 and abs(ar1_corr) > 0 else np.inf
+            results['imbalance_persistence'] = {
+                'ar1_coefficient': round(float(ar1_corr), 4),
+                'half_life_steps': round(float(half_life_imp), 1),
+                'interpretation': 'highly_persistent' if abs(ar1_corr) > 0.9 else (
+                    'moderately_persistent' if abs(ar1_corr) > 0.5 else 'noisy'),
+            }
+            logger.info(f"Imbalance AR(1)={ar1_corr:.4f}, half-life={half_life_imp:.0f} steps")
+        except Exception as e:
+            logger.warning(f"Persistence analysis failed: {e}")
+
+        # --- 4. Variance Decomposition ---
+        # How much does imbalance add beyond spread+volatility?
+        try:
+            sub = df[['return_1s', 'spread', 'volatility', imbalance]].dropna()
+            if len(sub) > 100:
+                y = sub['return_1s']
+                X_base = sm.add_constant(sub[['spread', 'volatility']])
+                r2_base = sm.OLS(y, X_base).fit().rsquared
+
+                X_full = sm.add_constant(sub[['spread', 'volatility', imbalance]])
+                r2_full = sm.OLS(y, X_full).fit().rsquared
+
+                results['variance_decomposition'] = {
+                    'r2_base': round(float(r2_base), 6),
+                    'r2_full': round(float(r2_full), 6),
+                    'r2_increment': round(float(r2_full - r2_base), 6),
+                    'pct_increase': round(float((r2_full - r2_base) / max(r2_base, 1e-12) * 100), 2),
+                }
+                logger.info(
+                    f"Var decomp: R² base={r2_base:.6f}, full={r2_full:.6f}, "
+                    f"increment={r2_full-r2_base:.6f}"
+                )
+        except Exception as e:
+            logger.warning(f"Variance decomposition failed: {e}")
+
+        # --- 5. Signal Concentration Around Volatility Shocks ---
+        # Is the signal stronger when volatility is changing (liquidity shock)?
+        try:
+            vol = df['volatility']
+            vol_chg = vol.diff().abs()
+            high_vol_chg = vol_chg > vol_chg.quantile(0.8)
+
+            sub = df[['return_1s', imbalance, 'volatility']].dropna()
+            corr_normal = float(sub[~high_vol_chg.reindex(sub.index, fill_value=False)][imbalance].corr(
+                sub[~high_vol_chg.reindex(sub.index, fill_value=False)]['return_1s']
+            )) if (~high_vol_chg).sum() > 100 else 0
+
+            corr_shock = float(sub[high_vol_chg.reindex(sub.index, fill_value=False)][imbalance].corr(
+                sub[high_vol_chg.reindex(sub.index, fill_value=False)]['return_1s']
+            )) if high_vol_chg.sum() > 100 else 0
+
+            results['signal_concentration'] = {
+                'correlation_normal': round(float(corr_normal), 4),
+                'correlation_vol_shock': round(float(corr_shock), 4),
+                'shock_to_normal_ratio': round(float(abs(corr_shock) / max(abs(corr_normal), 1e-12)), 2),
+            }
+            logger.info(
+                f"Signal concentration: normal corr={corr_normal:.4f}, "
+                f"vol shock corr={corr_shock:.4f}, "
+                f"ratio={results['signal_concentration']['shock_to_normal_ratio']:.2f}"
+            )
+        except Exception as e:
+            logger.warning(f"Signal concentration analysis failed: {e}")
+
+        return results
+
     def run_statistical_analysis(self, input_file: str, output_file: str = None) -> dict:
         """Run complete statistical analysis pipeline."""
         logger.info("Starting statistical analysis pipeline")
@@ -339,6 +486,7 @@ class StatisticalAnalyzer:
         interaction_results = self.run_interaction_models(df)
         regime_results = self.run_regime_analysis(df)
         signal_decay = self.run_signal_decay_analysis(df)
+        causality = self.run_causality_analysis(df)
         
         # Compile results
         all_results = {
@@ -347,6 +495,7 @@ class StatisticalAnalyzer:
             'interaction_model': interaction_results,
             'regime_analysis': regime_results,
             'signal_decay': signal_decay,
+            'causality_analysis': causality,
             'sample_size': len(df)
         }
         

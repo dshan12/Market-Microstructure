@@ -247,6 +247,62 @@ class VisualizationGenerator:
         plt.tight_layout()
         return fig
 
+    def plot_causality_analysis(self, results: dict):
+        """RQ5: Two-panel plot of lead-lag cross-correlation and variance decomposition."""
+        if not results:
+            return None
+
+        ca = results.get('causality_analysis', {})
+        ll = ca.get('lead_lag', {})
+        vd = ca.get('variance_decomposition', {})
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+        # Left panel: Lead-lag cross-correlation
+        ax = axes[0]
+        if ll:
+            fwd = ll.get('imbalance_leads_returns', {})
+            bwd = ll.get('returns_lead_imbalance', {})
+            lags = list(range(1, len(fwd) + 1))
+            fwd_vals = [fwd[k] for k in fwd]
+            bwd_vals = [bwd[k] for k in bwd]
+            ax.plot(lags, fwd_vals, 'o-', color='#2ecc71', lw=2, label='Imbalance → Future Return')
+            ax.plot(lags, bwd_vals, 's-', color='#e74c3c', lw=2, label='Return → Future Imbalance')
+            ax.axhline(y=0, color='gray', ls='--', alpha=0.5)
+            ax.set_xlabel('Lag (steps)')
+            ax.set_ylabel('Cross-Correlation')
+            ax.set_title('Lead-Lag: Does Imbalance Lead or Follow Price?', fontweight='bold')
+            ax.legend()
+            ax.grid(alpha=0.3)
+
+            summary = ca.get('lead_lag_summary', {})
+            direction = summary.get('direction', 'unknown')
+            ratio = summary.get('asymmetry_ratio', 0)
+            ax.text(0.5, -0.25,
+                    f'Direction: {direction}  |  Asymmetry ratio: {ratio:.2f}x',
+                    ha='center', va='top', transform=ax.transAxes,
+                    fontsize=11, style='italic')
+
+        # Right panel: Variance decomposition
+        ax = axes[1]
+        if vd:
+            labels = ['Base\n(Spread+Vol)', 'Full\n(+Imbalance)']
+            values = [vd.get('r2_base', 0) * 100, vd.get('r2_full', 0) * 100]
+            colors_bar = ['#3498db', '#2ecc71']
+            bars = ax.bar(labels, values, color=colors_bar, width=0.5, edgecolor='gray')
+            inc = vd.get('r2_increment', 0) * 100
+            for bar, val in zip(bars, values):
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.02,
+                        f'{val:.4f}%', ha='center', va='bottom', fontsize=11, fontweight='bold')
+            ax.set_ylabel('R² (%)')
+            ax.set_title(f'Variance Decomposition\nImbalance adds {inc:.4f}pp', fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+
+        fig.suptitle('RQ5: Why Does the Imbalance Signal Exist?',
+                     fontweight='bold', fontsize=14, y=1.02)
+        plt.tight_layout()
+        return fig
+
     def generate_all_visualizations(self, input_file: str, output_dir: str = "plots", results: dict = None):
         """Generate all EDA visualizations."""
         logger.info("Starting visualization generation pipeline")
@@ -341,6 +397,15 @@ class VisualizationGenerator:
                 plt.close(fig)
                 visualizations['market_making'] = f"{output_dir}/market_making_pnl.png"
                 logger.info("Saved market making PnL plot")
+        
+        # 7. Causality analysis (RQ5)
+        if results is not None and 'causality_analysis' in results:
+            fig = self.plot_causality_analysis(results)
+            if fig:
+                fig.savefig(f"{output_dir}/causality_analysis.png", dpi=300, bbox_inches='tight')
+                plt.close(fig)
+                visualizations['causality_analysis'] = f"{output_dir}/causality_analysis.png"
+                logger.info("Saved causality analysis plot")
         
         logger.info(f"Generated {len(visualizations)} visualizations")
         return visualizations

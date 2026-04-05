@@ -8,7 +8,7 @@
     "return_300s": -0.007415307684346859
   },
   "ols_regression": {
-    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f34a7c34cb0>",
+    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f98e3d71730>",
     "rsquared": 0.0006590181632616376
   },
   "interaction_model": {
@@ -166,6 +166,83 @@
       "b": 4.622890766329454e-05,
       "c": -67.31292491201951,
       "r_squared": 0.7169156098217416
+    }
+  },
+  "causality_analysis": {
+    "lead_lag": {
+      "imbalance_leads_returns": {
+        "imbalance_t \u2192 return_t+1": 0.010043802825749864,
+        "imbalance_t \u2192 return_t+2": 0.009003223785995308,
+        "imbalance_t \u2192 return_t+3": 0.012065995491734163,
+        "imbalance_t \u2192 return_t+4": 0.014973783367918669,
+        "imbalance_t \u2192 return_t+5": 0.008629315965300637,
+        "imbalance_t \u2192 return_t+6": 0.01044927763693795,
+        "imbalance_t \u2192 return_t+7": 0.010382153426220522,
+        "imbalance_t \u2192 return_t+8": 0.005558236432529824,
+        "imbalance_t \u2192 return_t+9": 0.012377442283926253,
+        "imbalance_t \u2192 return_t+10": 0.0014113084301675782
+      },
+      "returns_lead_imbalance": {
+        "return_t \u2192 imbalance_t+1": -0.00033353798463263944,
+        "return_t \u2192 imbalance_t+2": -0.00048300208860037265,
+        "return_t \u2192 imbalance_t+3": -0.0019499721087989147,
+        "return_t \u2192 imbalance_t+4": 0.0007118751359162551,
+        "return_t \u2192 imbalance_t+5": 0.0006906926601385493,
+        "return_t \u2192 imbalance_t+6": 0.007284248773336363,
+        "return_t \u2192 imbalance_t+7": 0.009394917681903363,
+        "return_t \u2192 imbalance_t+8": 0.009223815906845243,
+        "return_t \u2192 imbalance_t+9": 0.010644376187667446,
+        "return_t \u2192 imbalance_t+10": 0.010527946352310184
+      }
+    },
+    "lead_lag_summary": {
+      "avg_imbalance_predicts_returns": 0.009489,
+      "avg_returns_predict_imbalance": 0.004571,
+      "direction": "imbalance_leads",
+      "asymmetry_ratio": 2.076
+    },
+    "granger_causality": {
+      "test": "imbalance \u2192 return_1s",
+      "results": {
+        "lag_1": {
+          "ssr_f": 0.0012574257580835657,
+          "ssr_p": 0.9717134912488787
+        },
+        "lag_2": {
+          "ssr_f": 0.0012831061262284916,
+          "ssr_p": 0.9987177168671789
+        },
+        "lag_3": {
+          "ssr_f": 0.03987288147675288,
+          "ssr_p": 0.9893827116493101
+        },
+        "lag_4": {
+          "ssr_f": 0.09760907831198976,
+          "ssr_p": 0.9832498679885445
+        },
+        "lag_5": {
+          "ssr_f": 0.07678489880230861,
+          "ssr_p": 0.9957595120747271
+        }
+      },
+      "best_lag": null,
+      "significant": false
+    },
+    "imbalance_persistence": {
+      "ar1_coefficient": 0.0024,
+      "half_life_steps": 0.1,
+      "interpretation": "noisy"
+    },
+    "variance_decomposition": {
+      "r2_base": 0.000637,
+      "r2_full": 0.000707,
+      "r2_increment": 7e-05,
+      "pct_increase": 11.04
+    },
+    "signal_concentration": {
+      "correlation_normal": 0.0085,
+      "correlation_vol_shock": 0.0067,
+      "shock_to_normal_ratio": 0.79
     }
   },
   "sample_size": 10000,
