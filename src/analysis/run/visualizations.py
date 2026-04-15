@@ -303,6 +303,69 @@ class VisualizationGenerator:
         plt.tight_layout()
         return fig
 
+    def plot_velocity_analysis(self, results: dict):
+        """RQ6: Bar chart comparing R² of level-only vs level+velocity+acceleration models."""
+        va = results.get('velocity_analysis', {})
+        if not va:
+            return None
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+        # Left panel: correlation comparison
+        ax = axes[0]
+        labels = ['Level', 'Velocity', 'Acceleration']
+        corrs = [
+            va.get('level_correlation', 0),
+            va.get('velocity_correlation', 0),
+            va.get('acceleration_correlation', 0),
+        ]
+        colors_c = ['#3498db', '#2ecc71', '#e67e22']
+        bars = ax.bar(labels, corrs, color=colors_c, width=0.5, edgecolor='gray')
+        ax.axhline(y=0, color='gray', ls='--', alpha=0.5)
+        ax.set_ylabel('Correlation with 1s Return')
+        ax.set_title('Imbalance Level vs Dynamics\nPredictive Power', fontweight='bold')
+        for bar, val in zip(bars, corrs):
+            y_pos = bar.get_height() + max(corrs) * 0.15 if val >= 0 else bar.get_height() - max(corrs) * 0.15
+            ax.text(bar.get_x() + bar.get_width()/2, y_pos,
+                    f'{val:.4f}', ha='center', va='bottom' if val >= 0 else 'top',
+                    fontsize=10, fontweight='bold')
+        ax.grid(axis='y', alpha=0.3)
+
+        # Right panel: incremental R²
+        ax = axes[1]
+        inc = va.get('incremental_r2', {})
+        if inc:
+            labels_r = list(inc.keys())
+            vals_r = list(inc.values())
+            colors_r = ['#3498db', '#2ecc71', '#e67e22'][:len(labels_r)]
+            bars = ax.bar(labels_r, vals_r, color=colors_r, width=0.5, edgecolor='gray')
+            for bar, val in zip(bars, vals_r):
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(vals_r)*0.02,
+                        f'{val:.6f}', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            ax.set_ylabel('R²')
+            g = va.get('r2_gain', 0)
+            p = va.get('r2_gain_pct', 0)
+            ax.set_title(f'Incremental Predictive Power (Gain: +{g:.6f}, {p:.1f}%)', fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+
+        # Combined signal annotation
+        cs = va.get('combined_signal', {})
+        if cs:
+            spread = cs.get('long_short_spread', 0)
+            text = (
+                f'RQ6: Imbalance Dynamics - Velocity & Acceleration | '
+                f'Long-short spread={spread:.8f} | '
+                f'Long n={cs.get("n_long",0)} mean={cs.get("mean_return_long",0):.8f} | '
+                f'Short n={cs.get("n_short",0)} mean={cs.get("mean_return_short",0):.8f}'
+            )
+            fig.suptitle(text, fontweight='bold', fontsize=12, y=1.02)
+        else:
+            fig.suptitle('RQ6: Imbalance Dynamics — Velocity & Acceleration',
+                         fontweight='bold', fontsize=14, y=1.02)
+
+        plt.tight_layout()
+        return fig
+
     def generate_all_visualizations(self, input_file: str, output_dir: str = "plots", results: dict = None):
         """Generate all EDA visualizations."""
         logger.info("Starting visualization generation pipeline")
@@ -406,6 +469,15 @@ class VisualizationGenerator:
                 plt.close(fig)
                 visualizations['causality_analysis'] = f"{output_dir}/causality_analysis.png"
                 logger.info("Saved causality analysis plot")
+        
+        # 8. Velocity / acceleration analysis (RQ6)
+        if results is not None and 'velocity_analysis' in results:
+            fig = self.plot_velocity_analysis(results)
+            if fig:
+                fig.savefig(f"{output_dir}/velocity_analysis.png", dpi=300, bbox_inches='tight')
+                plt.close(fig)
+                visualizations['velocity_analysis'] = f"{output_dir}/velocity_analysis.png"
+                logger.info("Saved velocity analysis plot")
         
         logger.info(f"Generated {len(visualizations)} visualizations")
         return visualizations

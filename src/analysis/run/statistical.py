@@ -471,6 +471,125 @@ class StatisticalAnalyzer:
 
         return results
 
+    def run_velocity_analysis(self, df: pd.DataFrame) -> dict:
+        """RQ6: Do imbalance velocity and acceleration predict returns beyond the level?
+        
+        Tests:
+          1. Baseline: imbalance level vs future return correlation
+          2. Incremental: velocity/acceleration correlation with future returns
+          3. Augmented regression: does velocity add R² beyond level?
+          4. State dependence: is velocity more predictive during extreme level moves?
+          5. Combined signal: long when velocity>0 & level>0, short when opposite
+        """
+        if df.empty:
+            return {}
+        imp = 'depth_imbalance'
+        vel = 'imbalance_velocity'
+        acc = 'imbalance_acceleration'
+        ret = 'return_1s'
+        if imp not in df.columns or ret not in df.columns:
+            return {}
+        results = {}
+
+        sub = df[[imp, ret]].dropna()
+
+        # 1. Baseline level correlation
+        r_level = float(sub[imp].corr(sub[ret]))
+        results['level_correlation'] = round(r_level, 6)
+
+        # 2. Velocity and acceleration correlations
+        if vel in df.columns:
+            sub_v = df[[vel, ret]].dropna()
+            r_vel = float(sub_v[vel].corr(sub_v[ret]))
+            results['velocity_correlation'] = round(r_vel, 6)
+        if acc in df.columns:
+            sub_a = df[[acc, ret]].dropna()
+            r_acc = float(sub_a[acc].corr(sub_a[ret]))
+            results['acceleration_correlation'] = round(r_acc, 6)
+
+        logger.info(
+            f"RQ6 correlations: level={results.get('level_correlation', 0):.4f}, "
+            f"velocity={results.get('velocity_correlation', 0):.4f}, "
+            f"acceleration={results.get('acceleration_correlation', 0):.4f}"
+        )
+
+        # 3. Incremental R² from augmented regressions
+        avail = [c for c in [imp, vel, acc] if c in df.columns]
+        if len(avail) >= 2:
+            sub_r = df[[ret] + avail].dropna()
+            y = sub_r[ret]
+            inc_results = {}
+            feature_sets = [
+                ([imp], 'Level only'),
+                ([imp, vel], 'Level + Velocity'),
+            ]
+            if acc in avail:
+                feature_sets.append(([imp, vel, acc], 'Level + Velocity + Accel'))
+            for feats, label in feature_sets:
+                try:
+                    X = sm.add_constant(sub_r[feats])
+                    m = sm.OLS(y, X).fit()
+                    inc_results[label] = round(float(m.rsquared), 6)
+                except Exception:
+                    inc_results[label] = 0.0
+            results['incremental_r2'] = inc_results
+            r2_level = inc_results.get('Level only', 0)
+            r2_full = inc_results.get(list(inc_results.keys())[-1], 0)
+            results['r2_gain'] = round(r2_full - r2_level, 6)
+            results['r2_gain_pct'] = round(
+                (r2_full - r2_level) / max(r2_level, 1e-12) * 100, 1
+            )
+            logger.info(
+                f"RQ6 R²: level={r2_level:.6f}, full={r2_full:.6f}, "
+                f"gain={results['r2_gain']:.6f} ({results['r2_gain_pct']:.1f}%)"
+            )
+
+        # 4. State dependence: does velocity matter more when level is extreme?
+        if vel in df.columns:
+            sub_s = df[[imp, vel, ret]].dropna().copy()
+            sub_s['level_extreme'] = sub_s[imp].abs() > sub_s[imp].abs().quantile(0.8)
+            extreme = sub_s[sub_s['level_extreme']]
+            normal = sub_s[~sub_s['level_extreme']]
+            rv_extreme = float(extreme[vel].corr(extreme[ret])) if len(extreme) > 100 else 0
+            rv_normal = float(normal[vel].corr(normal[ret])) if len(normal) > 100 else 0
+            results['velocity_by_regime'] = {
+                'corr_when_level_moderate': round(rv_normal, 4),
+                'corr_when_level_extreme': round(rv_extreme, 4),
+                'ratio_extreme_to_moderate': round(
+                    abs(rv_extreme) / max(abs(rv_normal), 1e-12), 2
+                ),
+            }
+            logger.info(
+                f"RQ6 state: vel corr (moderate level)={rv_normal:.4f}, "
+                f"(extreme level)={rv_extreme:.4f}"
+            )
+
+        # 5. Simple combined trading signal
+        if vel in df.columns and acc in df.columns:
+            sub_t = df[[imp, vel, acc, ret]].dropna().copy()
+            sub_t['signal'] = 0
+            sub_t.loc[(sub_t[imp] > 0) & (sub_t[vel] > 0), 'signal'] = 1
+            sub_t.loc[(sub_t[imp] < 0) & (sub_t[vel] < 0), 'signal'] = -1
+            long = sub_t[sub_t['signal'] == 1][ret]
+            short = sub_t[sub_t['signal'] == -1][ret]
+            neutral = sub_t[sub_t['signal'] == 0][ret]
+            results['combined_signal'] = {
+                'n_long': int(len(long)),
+                'n_short': int(len(short)),
+                'n_neutral': int(len(neutral)),
+                'mean_return_long': round(float(long.mean()), 8),
+                'mean_return_short': round(float(short.mean()), 8),
+                'mean_return_neutral': round(float(neutral.mean()), 8),
+                'long_short_spread': round(float(long.mean() - short.mean()), 8),
+            }
+            spr = results['combined_signal']['long_short_spread']
+            logger.info(
+                f"RQ6 combined signal: long={long.mean():.8f}, "
+                f"short={short.mean():.8f}, spread={spr:.8f}"
+            )
+
+        return results
+
     def run_statistical_analysis(self, input_file: str, output_file: str = None) -> dict:
         """Run complete statistical analysis pipeline."""
         logger.info("Starting statistical analysis pipeline")
@@ -488,6 +607,8 @@ class StatisticalAnalyzer:
         signal_decay = self.run_signal_decay_analysis(df)
         causality = self.run_causality_analysis(df)
         
+        velocity = self.run_velocity_analysis(df)
+        
         # Compile results
         all_results = {
             'correlations': correlations,
@@ -496,6 +617,7 @@ class StatisticalAnalyzer:
             'regime_analysis': regime_results,
             'signal_decay': signal_decay,
             'causality_analysis': causality,
+            'velocity_analysis': velocity,
             'sample_size': len(df)
         }
         

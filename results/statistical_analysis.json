@@ -8,7 +8,7 @@
     "return_300s": -0.007415307684346859
   },
   "ols_regression": {
-    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f98e3d71730>",
+    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7f1c2bc17170>",
     "rsquared": 0.0006590181632616376
   },
   "interaction_model": {
@@ -243,6 +243,32 @@
       "correlation_normal": 0.0085,
       "correlation_vol_shock": 0.0067,
       "shock_to_normal_ratio": 0.79
+    }
+  },
+  "velocity_analysis": {
+    "level_correlation": 0.008242,
+    "velocity_correlation": -0.001456,
+    "acceleration_correlation": -0.001287,
+    "incremental_r2": {
+      "Level only": 6.8e-05,
+      "Level + Velocity": 0.000173,
+      "Level + Velocity + Accel": 0.000257
+    },
+    "r2_gain": 0.000189,
+    "r2_gain_pct": 277.9,
+    "velocity_by_regime": {
+      "corr_when_level_moderate": -0.009,
+      "corr_when_level_extreme": 0.0157,
+      "ratio_extreme_to_moderate": 1.75
+    },
+    "combined_signal": {
+      "n_long": 3681,
+      "n_short": 3777,
+      "n_neutral": 2532,
+      "mean_return_long": -7e-08,
+      "mean_return_short": -3e-08,
+      "mean_return_neutral": -5e-08,
+      "long_short_spread": -4e-08
     }
   },
   "sample_size": 10000,

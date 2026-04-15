@@ -98,6 +98,18 @@ class FeatureEngineer:
 
         return df
 
+    def compute_imbalance_velocity(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Compute imbalance velocity (first difference) and acceleration (second difference)."""
+        if 'depth_imbalance' not in df.columns:
+            return df
+        if 'imbalance_velocity' not in df.columns:
+            df['imbalance_velocity'] = df['depth_imbalance'].diff().fillna(0)
+            logger.info("Computed imbalance velocity (Δ imbalance)")
+        if 'imbalance_acceleration' not in df.columns:
+            df['imbalance_acceleration'] = df['imbalance_velocity'].diff().fillna(0)
+            logger.info("Computed imbalance acceleration (Δ² imbalance)")
+        return df
+
     def engineer_all_features(self, input_file: str, output_file: str | None = None) -> pd.DataFrame:
         """Engineer all features from processed data."""
         logger.info("Starting feature engineering pipeline")
@@ -112,7 +124,8 @@ class FeatureEngineer:
         df = self.compute_order_flow_imbalance(df)
         df = self.compute_volatility(df)
         df = self.compute_liquidity_metrics(df)
-
+        df = self.compute_imbalance_velocity(df)
+        
         if output_file:
             df.to_csv(output_file, index=False)
             logger.info(f"Features saved to {output_file}")
