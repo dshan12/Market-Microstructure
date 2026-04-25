@@ -1,6 +1,9 @@
 """
-Binance WebSocket API connector for limit order book data collection.
-Phase 1 implementation for quantitative market microstructure research.
+Real-time order book data collection via WebSocket.
+
+Connects to Kraken (ws.kraken.com) ticker feed — accessible from US,
+unlike Binance which geo-blocks.  Collects best bid/ask with volume
+every time the market updates (~100-200ms for BTC/USD).
 """
 
 import asyncio
@@ -8,93 +11,101 @@ import websockets
 import json
 from datetime import datetime
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-class BinanceOrderBookCollector:
-    """Collect limit order book data from Binance WebSocket API."""
-    
-    def __init__(self, symbol: str = "BTCUSDT", precision: str = "MILLISECOND"):
+
+class OrderBookCollector:
+    """Collect top-of-book ticker data from Kraken WebSocket."""
+
+    def __init__(self, symbol: str = "XBT/USD"):
         self.symbol = symbol
-        self.precision = precision
-        self.ws_url = "wss://stream.binance.com:9443/ws/"
-        
-    async def connect_and_collect(self, duration_seconds: int = 3600):
-        """Connect to Binance WebSocket and collect order book data."""
+        self.pair = symbol
+        self.url = "wss://ws.kraken.com"
+
+    async def collect(self, duration_seconds: int = 600) -> pd.DataFrame:
+        """Connect to Kraken and collect ticker data."""
         start_time = datetime.now()
         end_time = start_time + pd.Timedelta(seconds=duration_seconds)
-        
-        snapshots = []
-        
-        async with websockets.connect(
-            f"{self.ws_url}{self.symbol}@depth"
-        ) as websocket:
-            logger.info(f"Connected to {self.symbol} order book stream")
-            
+        rows = []
+
+        subscribe = {
+            "event": "subscribe",
+            "pair": [self.pair],
+            "subscription": {"name": "ticker"},
+        }
+
+        async with websockets.connect(self.url) as ws:
+            # Send subscribe
+            await ws.send(json.dumps(subscribe))
+            # Read subscription confirmation
+            conf = await ws.recv()
+            logger.info(f"Subscribed: {json.loads(conf)}")
+
             while datetime.now() < end_time:
                 try:
-                    message = await websocket.recv()
-                    data = json.loads(message)
-                    
-                    if 'bids' in data and 'asks' in data:
-                        timestamp = int(data.get('E', data.get('e', int(datetime.now().timestamp() * 1000))))
-                        
-                        snapshot = {
-                            'timestamp': timestamp,
-                            'symbol': self.symbol,
-                            'best_bid': float(data['bids'][0][0]) if data['bids'] else None,
-                            'best_ask': float(data['asks'][0][0]) if data['asks'] else None,
-                            'bid_volume': float(data['bids'][0][1]) if data['bids'] else None,
-                            'ask_volume': float(data['asks'][0][1]) if data['asks'] else None,
-                            'data': data
-                        }
-                        
-                        snapshots.append(snapshot)
-                        
+                    msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                    data = json.loads(msg)
+                    # Kraken ticker data comes as a list:
+                    #   [channel_id, {ticker_dict}, "channel_name", "pair"]
+                    if isinstance(data, list) and len(data) >= 2:
+                        t = data[1]
+                        if not isinstance(t, dict) or 'b' not in t:
+                            continue
+                        ts_ms = int(datetime.now().timestamp() * 1000)
+                        rows.append({
+                            'timestamp': ts_ms,
+                            'best_bid': float(t['b'][0]),
+                            'best_ask': float(t['a'][0]),
+                            'bid_volume': float(t['b'][2]),
+                            'ask_volume': float(t['a'][2]),
+                        })
+                except asyncio.TimeoutError:
+                    continue
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
-        
-        logger.info(f"Collected {len(snapshots)} order book snapshots")
-        return snapshots
-        
-    async def run_collection(self, output_file: str = None):
-        """Run the complete data collection process."""
-        logger.info(f"Starting data collection for {self.symbol}")
-        
-        snapshots = await self.connect_and_collect(duration_seconds=60)
-        
-        if snapshots:
-            df = pd.DataFrame(snapshots)
-            logger.info(f"Collected {len(df)} data points")
-            
-            if output_file:
-                df.to_csv(output_file, index=False)
-                logger.info(f"Data saved to {output_file}")
-            
-            return df
-        else:
+
+        df = pd.DataFrame(rows)
+        logger.info(f"Collected {len(df)} ticker snapshots over {duration_seconds}s")
+        return df
+
+    async def run_collection(self, output_file: Optional[str] = None,
+                             duration_seconds: int = 600) -> pd.DataFrame:
+        logger.info(f"Starting data collection for {self.symbol} ({duration_seconds}s)")
+        df = await self.collect(duration_seconds=duration_seconds)
+        if df.empty:
             logger.warning("No data collected")
-            return pd.DataFrame()
+            return df
+        if output_file:
+            df.to_csv(output_file, index=False)
+            logger.info(f"Data saved to {output_file}")
+        return df
+
 
 def main():
-    """Main entry point for data collection."""
     import argparse
-    
-    parser = argparse.ArgumentParser(description="Binance Order Book Data Collector")
-    parser.add_argument("--symbol", default="BTCUSDT", help="Trading symbol (default: BTCUSDT)")
-    parser.add_argument("--output", help="Output CSV file path")
-    parser.add_argument("--duration", type=int, default=60, help="Collection duration in seconds (default: 60)")
-    
+    parser = argparse.ArgumentParser(description="Order Book Data Collector")
+    parser.add_argument("--symbol", default="XBT/USD", help="Trading pair (default: XBT/USD)")
+    parser.add_argument("--output", default="data/raw/kraken_ticker.csv",
+                        help="Output CSV file path")
+    parser.add_argument("--duration", type=int, default=600,
+                        help="Collection duration in seconds (default: 600 = 10 min)")
     args = parser.parse_args()
-    
-    collector = BinanceOrderBookCollector(symbol=args.symbol)
-    
+
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    collector = OrderBookCollector(symbol=args.symbol)
+
     async def run():
-        await collector.run_collection(output_file=args.output)
-    
+        await collector.run_collection(
+            output_file=args.output, duration_seconds=args.duration
+        )
+
     asyncio.run(run())
+
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ __version__ = "1.0.0"
 __author__ = "Market Microstructure Research Team"
 __email__ = "research@example.com"
 
-from .data.collect import BinanceOrderBookCollector
+from .data.collect import OrderBookCollector
 from .data.process import OrderBookDataProcessor
 from .analysis.run import MarketMicrostructureResearch
 from .analysis.run.features import FeatureEngineer
