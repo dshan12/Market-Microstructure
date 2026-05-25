@@ -1,0 +1,131 @@
+{
+  "data_summary": {
+    "n_rows": 5002,
+    "imbalance_mean": 0.0289,
+    "imbalance_std": 0.7239,
+    "imbalance_ar1": 0.6909,
+    "spread_mean_bps": 1.5946,
+    "return_1s_mean": 1.769e-05,
+    "return_1s_std": 0.00027971
+  },
+  "rq1_correlations": {
+    "1s": -0.0062,
+    "5s": 0.0519,
+    "10s": 0.07,
+    "30s": 0.0256,
+    "60s": -0.0336,
+    "300s": -0.1775
+  },
+  "rq2_decay": {
+    "half_life_s": 24.5,
+    "decay_rate_b": 0.0283,
+    "amplitude_a": 0.0389
+  },
+  "rq3_regime": {
+    "spread_bps_q0": {
+      "corr": 0.183,
+      "n": 1001
+    },
+    "spread_bps_q1": {
+      "corr": 0.02,
+      "n": 1000
+    },
+    "spread_bps_q2": {
+      "corr": -0.0096,
+      "n": 1000
+    },
+    "spread_bps_q3": {
+      "corr": -0.1039,
+      "n": 1000
+    },
+    "spread_bps_q4": {
+      "corr": -0.0596,
+      "n": 1001
+    },
+    "volatility_q0": {
+      "corr": 0.2216,
+      "n": 1001
+    },
+    "volatility_q1": {
+      "corr": -0.0306,
+      "n": 1000
+    },
+    "volatility_q2": {
+      "corr": 0.0299,
+      "n": 1000
+    },
+    "volatility_q3": {
+      "corr": 0.0991,
+      "n": 1000
+    },
+    "volatility_q4": {
+      "corr": 0.0467,
+      "n": 1001
+    }
+  },
+  "rq4_market_making": {
+    "Basic": {
+      "stats": {
+        "total_pnl": -560.05,
+        "sharpe_ratio": -34.801,
+        "max_drawdown": -670.26,
+        "max_drawdown_pct": -1.0,
+        "gross_spread_pnl": 987.23,
+        "inventory_pnl": -1547.28,
+        "inventory_volatility": 34.2129,
+        "trade_count": 3543,
+        "avg_spread": 0.265857,
+        "spread_capture_pct": 70.8,
+        "n_steps": 5001
+      }
+    },
+    "Adaptive": {
+      "stats": {
+        "total_pnl": -532.82,
+        "sharpe_ratio": -33.121,
+        "max_drawdown": -645.71,
+        "max_drawdown_pct": -1.0,
+        "gross_spread_pnl": 987.23,
+        "inventory_pnl": -1520.05,
+        "inventory_volatility": 34.2129,
+        "trade_count": 3543,
+        "avg_spread": 0.265857,
+        "spread_capture_pct": 70.8,
+        "n_steps": 5001
+      }
+    }
+  },
+  "rq5_granger_causality": {
+    "lag_1": {
+      "ssr_p": 0.003708
+    },
+    "lag_2": {
+      "ssr_p": 0.007453
+    },
+    "lag_3": {
+      "ssr_p": 0.013438
+    },
+    "lag_4": {
+      "ssr_p": 0.023078
+    },
+    "lag_5": {
+      "ssr_p": 0.017268
+    }
+  },
+  "rq6_velocity_analysis": {
+    "level_corr": 0.07,
+    "velocity_corr": 0.0077,
+    "level_r2": 0.004902,
+    "level_vel_r2": 0.006019,
+    "r2_pct_change": 22.77,
+    "level_coef": 5.84e-05,
+    "level_tstat": 1.64,
+    "level_pval": 0.100803,
+    "vel_coef": -0.00015731,
+    "vel_tstat": -1.07,
+    "vel_pval": 0.282676,
+    "high_state_vel_corr": -0.0462,
+    "low_state_vel_corr": -0.0034,
+    "n_obs": 4997
+  }
+}

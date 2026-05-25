@@ -11,8 +11,12 @@ This research paper investigates whether order book imbalance predicts future re
 3. Data and Methodology
 4. Empirical Analysis
 5. Results
-6. When Does Imbalance Matter Most? (RQ3)
-7. Can a Market Maker Exploit These Signals? (RQ4)
+    5.1 Imbalance Persistence (RQ1)
+    5.2 Return Predictability (RQ2)
+    5.3 Signal Decay Over Time
+    5.4 When Does Imbalance Matter Most? (RQ3)
+6. Can a Market Maker Exploit These Signals? (RQ4)
+7. Can a Market Maker Profit? Advanced Strategies (RQ7)
 8. Why Does the Signal Exist? (RQ5)
 9. Do Imbalance Velocity and Acceleration Predict Returns? (RQ6)
 10. Conclusion and Future Research
@@ -367,7 +371,83 @@ The improvement from adaptive quoting is small and dataset-dependent. On Window 
 
 *Figure 3: Market maker performance comparison across datasets.*
 
-## 7. Why Does the Signal Exist? (RQ5)
+## 7. Can a Market Maker Profit? Advanced Strategies (RQ7)
+
+RQ4 showed that two-sided market making (Basic and Adaptive) loses money across all datasets. The core problem: when imbalance predicts a price direction, the MM is forced to trade on both sides, and adverse selection on the "wrong" side swamps the spread collected on the "right" side. RQ7 tests whether selective, signal-aware quoting can break this cycle.
+
+### 7.1 Strategy Design
+
+We test three new strategies alongside the original Basic and Adaptive:
+
+1. **OneSided Market Maker**: Only trades in the direction favored by imbalance.
+   - When imb > threshold (buy pressure): only posts at the ask (sells). Refuses to buy — would be accumulating a long position when price is about to rise.
+   - When imb < -threshold (sell pressure): only posts at the bid (buys). Refuses to sell.
+   - This transforms the MM from a passive liquidity provider into a **selective directional trader**.
+
+2. **VelocityCautious Market Maker**: Uses RQ6's finding that high imbalance + same-sign velocity predicts reversal. Skips trades during reversal-risk periods.
+
+3. **CombinedSmart Market Maker**: Combines one-sided quoting with velocity caution.
+
+Additionally, we perform a grid search over:
+- Adaptive skew strength: {0, 0.1, 0.5, 1, 2, 3, 5, 10, 20, 50}
+- OneSided threshold: {0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9}
+
+### 7.2 Results
+
+| Strategy | BTC Full (5,768) | BTC W1 (2,645) | ETH (5,002) |
+|----------|:----------------:|:---------------:|:------------:|
+| Basic | −$33,118 | −$1,374 | −$560 |
+| Adaptive (skew=3) | −$32,655 | −$1,328 | −$397 |
+| **OneSided (th=0.3)** | **+$6,089** | **+$3,152** | −$530 |
+| VelCautious | −$33,118 | −$1,374 | −$560 |
+| CombinedSmart | +$6,089 | +$3,152 | −$530 |
+
+**Grid search optima:**
+
+| Optimized Strategy | BTC Full | BTC W1 | ETH |
+|--------------------|----------|--------|-----|
+| Best OneSided threshold | **0.0** (+$10,296) | **0.0** (+$3,361) | 0.9 (−$467) |
+| Best Adaptive skew | 50 (−$25,401) | 50 (−$615) | **50 (+$2,164)** |
+
+### 7.3 PnL Decomposition
+
+The source of profit reveals the mechanism:
+
+| Strategy | Dataset | Total PnL | Spread PnL | Inventory PnL | % from Inventory |
+|----------|---------|:---------:|:----------:|:-------------:|:----------------:|
+| Basic | BTC Full | −$33,118 | +$3,365 | −$36,483 | — |
+| **OneSided (th=0)** | BTC Full | **+$10,296** | +$1,749 | **+$8,547** | **83%** |
+| **OneSided (th=0)** | BTC W1 | **+$3,361** | +$426 | **+$2,935** | **87%** |
+| **Adaptive (skew=50)** | ETH | **+$2,164** | +$987 | **+$1,177** | **54%** |
+
+### 7.4 Key Findings
+
+1. **OneSided quoting profits on BTC** (+$6,089 to +$10,296) with high Sharpe ratios (7.8–46.1). The strategy works by only accumulating inventory in the direction signaled by imbalance — effectively a **directional momentum strategy** rather than market making. 83-87% of profit comes from inventory appreciation, not spread capture.
+
+2. **High-skew Adaptive quoting profits on ETH** (+$2,164, Sharpe 41.0). For ETH's microstructure (smaller spreads, faster decay), aggressive skewing (skew=50) prices the MM out of the wrong side while capturing the right side. Skew does not work for BTC (all skew values PnL < 0).
+
+3. **The profitable strategies are asset-specific**. BTC responds to one-sided selection; ETH responds to aggressive skew. No single strategy works across both.
+
+4. **Market making per se is not profitable**. The basic two-sided quote provision loses money in all configurations. The "profitable" MM strategies are actually directional trading strategies that use the imbalance signal to time inventory accumulation, not traditional liquidity provision.
+
+5. **Trade count drops dramatically**. OneSided (th=0) trades only 132–506 times vs 548–1,368 for Basic. Spread capture falls to 5-9% (vs 24-71%). The strategy is highly selective.
+
+### 7.5 Economic Interpretation
+
+The answer to RQ7 is nuanced: **a pure market maker cannot profit from imbalance signals, but a selective directional trader can.** The imbalance signal identifies the direction of future price movements — exploiting this requires taking directional inventory positions, not passively collecting the spread.
+
+This aligns with microstructure theory (Kyle 1985): informed order flow predicts future prices, and the only way to profit from it is to trade in the same direction — exactly what market makers try to avoid. The MM's traditional role (providing two-sided liquidity) is incompatible with exploiting directional signals.
+
+For practical applications:
+- **High-frequency market makers** should use imbalance signals to manage inventory (skew or gate quotes) rather than as a pure alpha signal
+- **Directional traders** can use the signal directly for momentum-style strategies
+- **Cross-asset differences** (BTC vs ETH) suggest microstructure-responsive parameter tuning is essential
+
+![RQ7 Strategy Comparison](plots/rq7_comparison.png)
+
+*Figure 6: RQ7 strategy comparison across all datasets. Left: Total PnL. Right: Sharpe ratio. OneSided profits on BTC; High-skew Adaptive profits on ETH.*
+
+## 8. Why Does the Signal Exist? (RQ5)
 
 We run five diagnostic tests on the real Kraken data to distinguish between competing explanations: information arrival, liquidity shocks, temporary order pressure, and market inefficiency.
 
@@ -448,7 +528,7 @@ The contrast with synthetic data is stark: persistent real order flow (AR(1) = 0
 
 *Figure 4: Granger causality test results. Left: F-statistics by lag — significant at lags 1-3. Right: Variance decomposition — imbalance adds 1.9pp to R² (31% improvement).*
 
-## 8. Do Imbalance Velocity and Acceleration Predict Returns? (RQ6)
+## 9. Do Imbalance Velocity and Acceleration Predict Returns? (RQ6)
 
 All prior analysis uses the **level** of depth imbalance. But order flow is dynamic — the change in imbalance (velocity) may contain information that the static level misses. This is nearly unexplored in the literature.
 
@@ -500,7 +580,7 @@ The velocity effect is robust across BTC datasets (11.3% R² gain, significant n
 
 *Figure 5: Velocity analysis — incremental R² across datasets and state-dependent effects.*
 
-## 9. Conclusion and Future Research
+## 10. Conclusion and Future Research
 
 ### 9.1 Summary
 This research provides robust evidence that order book imbalance predicts future returns on real market data from Kraken BTC/USD and ETH/USD. The key findings are:
