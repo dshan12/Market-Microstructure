@@ -90,31 +90,81 @@ class VisualizationGenerator:
         df_sorted['imbalance_decile'] = pd.qcut(df_sorted[imbalance_col], 10)
         
         # Calculate average returns per decile
-        decile_stats = df_sorted.groupby('imbalance_decile')[return_col].agg(['mean', 'std']).reset_index()
+        decile_stats = df_sorted.groupby('imbalance_decile').agg(
+            mean_return=(return_col, 'mean'),
+            std_return=(return_col, 'std'),
+            mean_imbalance=(imbalance_col, 'mean'),
+            count=(imbalance_col, 'count')
+        ).reset_index()
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         
         # Plot 1: Distribution of imbalance by decile
-        ax1.bar(range(1, 11), decile_stats[imbalance_col].astype(str), color='lightblue')
+        ax1.bar(range(1, 11), decile_stats['mean_imbalance'], color='lightblue')
         ax1.set_xlabel('Imbalance Decile')
-        ax1.set_ylabel('Imbalance Range')
-        ax1.set_title('Imbalance Distribution by Decile', fontweight='bold')
+        ax1.set_ylabel('Mean Imbalance')
+        ax1.set_title('Mean Imbalance by Decile', fontweight='bold')
         
         # Plot 2: Average returns by decile
-        colors = ['red' if x < 0 else 'green' for x in decile_stats['mean']]
-        bars = ax2.bar(range(1, 11), decile_stats['mean'], color=colors)
+        colors = ['red' if x < 0 else 'green' for x in decile_stats['mean_return']]
+        bars = ax2.bar(range(1, 11), decile_stats['mean_return'], color=colors)
         ax2.set_xlabel('Imbalance Decile')
         ax2.set_ylabel('Average Future Return')
         ax2.set_title('Average Future Returns by Imbalance Decile', fontweight='bold')
         ax2.axhline(y=0, color='black', linestyle='-', alpha=0.5)
         
         # Add error bars
-        ax2.errorbar(range(1, 11), decile_stats['mean'], 
-                    yerr=decile_stats['std'], fmt='none', color='black', capsize=5)
+        ax2.errorbar(range(1, 11), decile_stats['mean_return'], 
+                    yerr=decile_stats['std_return'], fmt='none', color='black', capsize=5)
         
         plt.tight_layout()
         return fig
     
+    def plot_signal_decay_curve(
+        self,
+        horizons: list,
+        correlations: list,
+        exp_fit: Optional[dict] = None,
+        power_fit: Optional[dict] = None,
+    ):
+        """Create dual-panel signal decay curve visualization.
+
+        Left panel: horizons vs correlations with exponential fit (semilog x).
+        Right panel: horizons vs absolute correlations with power-law fit (log-log).
+        """
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+        # Left panel: exponential fit on semilog x
+        ax1.scatter(horizons, correlations, color='steelblue', label='Observed')
+        if exp_fit is not None:
+            x_smooth = np.linspace(min(horizons), max(horizons), 200)
+            y_fit = exp_fit['a'] * np.exp(-exp_fit['b'] * x_smooth)
+            ax1.plot(x_smooth, y_fit, 'r-', label=f"Exp fit (R²={exp_fit.get('r_squared', 0):.3f})")
+        ax1.set_xscale('log')
+        ax1.set_xlabel('Forecast Horizon (s, log scale)')
+        ax1.set_ylabel('Correlation')
+        ax1.set_title('Signal Decay Curve (Exponential Fit)', fontweight='bold')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Right panel: power-law fit on log-log
+        abs_corr = [abs(c) for c in correlations]
+        ax2.scatter(horizons, abs_corr, color='steelblue', label='Observed')
+        if power_fit is not None:
+            x_smooth = np.linspace(min(horizons), max(horizons), 200)
+            y_fit = power_fit['a'] * x_smooth ** (-power_fit['b'])
+            ax2.plot(x_smooth, y_fit, 'r-', label=f"Power fit (R²={power_fit.get('r_squared', 0):.3f})")
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.set_xlabel('Forecast Horizon (s, log scale)')
+        ax2.set_ylabel('|Correlation| (log scale)')
+        ax2.set_title('Absolute Decay (Power-Law Fit)', fontweight='bold')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        return fig
+
     def generate_all_visualizations(self, input_file: str, output_dir: str = "plots"):
         """Generate all EDA visualizations."""
         logger.info("Starting visualization generation pipeline")
