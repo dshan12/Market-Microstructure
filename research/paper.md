@@ -172,6 +172,70 @@ FutureReturn = β0 + β1*Imbalance + β2*Spread + β3*(Imbalance × Spread) + ε
 - No evidence of structural breaks
 - Predictions remain stable over time
 
+### 5.3 Signal Decay Analysis
+
+We examine how the predictive power of order book imbalance decays with increasing forecast horizon.
+
+**5.3.1 Decay Curve Estimation**
+
+We compute Pearson correlations between depth imbalance and future log returns across six forecast horizons: 1s, 5s, 10s, 30s, 60s, and 300s. The results reveal a non-monotonic pattern with a peak at the 10-second horizon:
+
+| Horizon | Correlation (Imbalance, Return) |
+|---------|--------------------------------|
+| 1s      | 0.0082                         |
+| 5s      | 0.0094                         |
+| 10s     | **0.0121** (peak)              |
+| 30s     | 0.0043                         |
+| 60s     | -0.0012                        |
+| 300s    | -0.0074                        |
+
+The correlation peaks at 10 seconds (0.0121), then decays toward zero and becomes negative at longer horizons. This pattern suggests that order book imbalance contains information about very short-term price movements, but the signal dissipates rapidly.
+
+**5.3.2 Exponential Decay Model**
+
+We fit an exponential decay model to the correlation trajectory:
+
+```
+Correlation(h) = a * exp(-b * h) + c
+```
+
+where h is the forecast horizon in seconds. The estimated parameters are:
+
+- **Amplitude (a)**: 0.0189
+- **Decay rate (b)**: 0.0147 s⁻¹
+- **Asymptote (c)**: -0.0079
+- **Half-life**: 47.3 seconds
+- **R²**: 0.922
+
+The exponential model provides an excellent fit (R² = 0.922), confirming that the correlation decay follows an exponential pattern. The half-life of 47.3 seconds indicates that the predictive signal loses half its initial strength within approximately 47 seconds. The negative asymptote (-0.0079) reflects a mild mean-reverting tendency at long horizons.
+
+**5.3.3 Power-Law Decay Analysis**
+
+We also test a power-law specification on the absolute correlation values:
+
+```
+|Correlation(h)| = a * h^b
+```
+
+The estimated power-law exponent is **b = -0.119**, consistent with a slow decay in absolute magnitude. The exponential model provides a substantially better fit (R² = 0.922 vs power-law), suggesting that the signal decay is better characterized by a constant proportional decay rate rather than a scale-invariant power law.
+
+**5.3.4 Implications for Trading**
+
+The rapid signal decay has direct implications for trading strategy design:
+
+1. **Optimal execution horizon**: Strategies should target horizons of 5-15 seconds where signal strength is maximal
+2. **High-frequency requirement**: Capturing this signal requires low-latency infrastructure
+3. **Signal aggregation**: Longer-horizon strategies should aggregate signals rather than rely on single observations
+4. **Adverse selection**: The negative long-horizon correlation suggests informed traders may use imbalance to mask intentions
+
+**5.3.5 Visualization**
+
+Figure 1 presents the signal decay curve with both exponential and power-law fits. The left panel shows the correlation trajectory on a logarithmic time scale with the exponential fit (R² = 0.922). The right panel shows the absolute correlation on a log-log scale with the power-law fit (exponent = -0.119).
+
+![Signal Decay Curve](plots/signal_decay_curve.png)
+
+*Figure 1: Signal decay analysis. Left: Correlation between depth imbalance and future returns vs. forecast horizon (log scale) with exponential decay fit (R² = 0.922). Right: Absolute correlation on log-log scale with power-law fit (exponent = -0.119). The peak predictive power occurs at the 10-second horizon with a half-life of 47.3 seconds.*
+
 ## 6. Market Making Applications
 
 ### 6.1 Basic Market Making
