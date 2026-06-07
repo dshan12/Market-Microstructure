@@ -1,2 +1,4 @@
 info.txt
 AGENTS.md
+__pycache__/
+*.pyc
