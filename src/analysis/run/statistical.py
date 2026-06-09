@@ -92,7 +92,7 @@ class StatisticalAnalyzer:
             model = sm.OLS(y, X).fit()
             
             # Get HAC standard errors
-            hac_cov = cov_hac(model.cov_params(), nlags=1)
+            hac_cov = cov_hac(model, nlags=1)
             model_hac = type('HACModel', (object,), {
                 'params': model.params,
                 'bse': np.sqrt(np.diag(hac_cov)),
@@ -133,7 +133,7 @@ class StatisticalAnalyzer:
                     model = sm.OLS(y, X).fit()
                     
                     # Get HAC standard errors
-                    hac_cov = cov_hac(model.cov_params(), nlags=1)
+                    hac_cov = cov_hac(model, nlags=1)
                     model_hac = type('HACModel', (object,), {
                         'params': model.params,
                         'bse': np.sqrt(np.diag(hac_cov)),
@@ -160,10 +160,14 @@ class StatisticalAnalyzer:
         h = np.asarray(horizons)[sort_idx]
         c = np.asarray(correlations)[sort_idx]
         try:
+            a_guess = c[0] - c[-1]
+            b_guess = 0.01
+            c_guess = c[-1]
             popt, pcov = curve_fit(
                 lambda h, a, b, c: a * np.exp(-b * h) + c,
                 h, c,
-                bounds=([0, 0, -np.inf], [np.inf, np.inf, np.inf])
+                p0=[a_guess, b_guess, c_guess],
+                bounds=([-np.inf, 0, -np.inf], [np.inf, np.inf, np.inf])
             )
             residuals = c - (popt[0] * np.exp(-popt[1] * h) + popt[2])
             ss_res = np.sum(residuals ** 2)
@@ -189,9 +193,14 @@ class StatisticalAnalyzer:
         h = np.asarray(horizons)[sort_idx]
         c = np.asarray(correlations)[sort_idx]
         try:
+            a_guess = c[0] - c[-1]
+            b_guess = 0.1
+            c_guess = c[-1]
             popt, pcov = curve_fit(
                 lambda h, a, b, c: a * h ** (-b) + c,
-                h, c
+                h, c,
+                p0=[a_guess, b_guess, c_guess],
+                maxfev=10000
             )
             residuals = c - (popt[0] * h ** (-popt[1]) + popt[2])
             ss_res = np.sum(residuals ** 2)
@@ -245,16 +254,28 @@ class StatisticalAnalyzer:
             preferred_model = 'exponential' if exp_fit['r_squared'] >= pow_fit['r_squared'] else 'power_law'
         elif pow_fit is not None:
             preferred_model = 'power_law'
-        return {
+        result = {
             'horizons': horizons.tolist(),
             'correlations': correlations.tolist(),
-            'half_life': half_life,
-            'fits': {
-                'exponential': exp_fit,
-                'power_law': pow_fit
-            },
+            'half_life_seconds': half_life,
             'preferred_model': preferred_model
         }
+        if exp_fit is not None:
+            result['exponential_fit'] = {
+                'a': exp_fit['params']['a'],
+                'b': exp_fit['params']['b'],
+                'c': exp_fit['params']['c'],
+                'half_life_seconds': exp_fit['half_life'],
+                'r_squared': exp_fit['r_squared']
+            }
+        if pow_fit is not None:
+            result['power_law_fit'] = {
+                'a': pow_fit['params']['a'],
+                'b': pow_fit['params']['b'],
+                'c': pow_fit['params']['c'],
+                'r_squared': pow_fit['r_squared']
+            }
+        return result
     
     def run_statistical_analysis(self, input_file: str, output_file: str = None) -> dict:
         """Run complete statistical analysis pipeline."""

@@ -1,0 +1,52 @@
+{
+  "correlations": {
+    "return_1s": 0.008242384147734257,
+    "return_5s": 0.00938718993329269,
+    "return_10s": 0.012092404056936481,
+    "return_30s": 0.004259852818013152,
+    "return_60s": -0.001199258776825057,
+    "return_300s": -0.007415307684346859
+  },
+  "ols_regression": {
+    "model_summary": "<src.analysis.run.statistical.HACModel object at 0x7fb550e6b950>",
+    "rsquared": 0.0006590181632616376
+  },
+  "interaction_model": {
+    "interaction_model": "<src.analysis.run.statistical.HACModel object at 0x7fb550e6bef0>",
+    "interaction_rsquared": NaN
+  },
+  "signal_decay": {
+    "horizons": [
+      1,
+      5,
+      10,
+      30,
+      60,
+      300
+    ],
+    "correlations": [
+      0.008242384147734257,
+      0.00938718993329269,
+      0.012092404056936481,
+      0.004259852818013152,
+      -0.001199258776825057,
+      -0.007415307684346859
+    ],
+    "half_life_seconds": 25.43865298556121,
+    "preferred_model": "exponential",
+    "exponential_fit": {
+      "a": 0.018873480561557493,
+      "b": 0.014660407142731919,
+      "c": -0.007881973463466528,
+      "half_life_seconds": 47.28021355829683,
+      "r_squared": 0.9218373605193102
+    },
+    "power_law_fit": {
+      "a": 67.32602821818432,
+      "b": 4.622890766329454e-05,
+      "c": -67.31292491201951,
+      "r_squared": 0.7169156098217416
+    }
+  },
+  "sample_size": 10000
+}
