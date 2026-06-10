@@ -369,7 +369,7 @@ The improvement from adaptive quoting is small and dataset-dependent. On Window 
 
 ![Market Making PnL](plots/market_making_pnl.png)
 
-*Figure 3: Market maker performance comparison across datasets.*
+*Figure 1: Market maker performance comparison across datasets.*
 
 ## 7. Can a Market Maker Profit? Advanced Strategies (RQ7)
 
@@ -445,19 +445,19 @@ For practical applications:
 
 ![RQ7 Strategy Comparison](plots/rq7_comparison.png)
 
-*Figure 6: RQ7 strategy comparison across all datasets. Left: Total PnL. Right: Sharpe ratio. OneSided profits on BTC; High-skew Adaptive profits on ETH.*
+*Figure 2: RQ7 strategy comparison across all datasets. Left: Total PnL. Right: Sharpe ratio. OneSided profits on BTC; High-skew Adaptive profits on ETH.*
 
 ## 8. Why Does the Signal Exist? (RQ5)
 
 We run five diagnostic tests on the real Kraken data to distinguish between competing explanations: information arrival, liquidity shocks, temporary order pressure, and market inefficiency.
 
-### 7.1 Lead-Lag Cross-Correlation
+### 8.1 Lead-Lag Cross-Correlation
 
 If information flows FROM order flow TO prices (information arrival), imbalance should predict future returns better than past returns predict future imbalance. If the reverse holds, the signal is mechanical (price changes drive order placement).
 
 On the real data with AR(1) = 0.86, the lead-lag analysis is complicated by the high persistence of both series. We instead rely on Granger causality tests for directionality.
 
-### 7.2 Granger Causality
+### 8.2 Granger Causality
 
 We test whether lagged imbalance improves forecasts of current returns controlling for lagged returns. Results vary substantially by dataset:
 
@@ -487,11 +487,11 @@ We test whether lagged imbalance improves forecasts of current returns controlli
 
 **Granger causality is significant in 2 of 3 datasets.** The BTC Window 1 (p=0.005) and ETH (p=0.004) both reject the null, while the full combined BTC dataset does not (p=0.337). This pattern reveals that **Granger causality is state-dependent**: during high-information periods, imbalance causes returns; during low-information periods, the causal linkage weakens. The ETH result independently validates that the causal relationship exists on a different asset.
 
-### 7.3 Imbalance Persistence (AR(1))
+### 8.3 Imbalance Persistence (AR(1))
 
 If imbalance reflects informed trading, it should exhibit persistence. On real data, the AR(1) coefficient is **0.863** — highly persistent. This is dramatically different from the synthetic data (AR(1) ≈ 0.002). Real order flow has substantial memory: each observation strongly predicts the next. This persistence is consistent with informed trading splitting large orders across multiple transactions, or with herding behavior among market participants.
 
-### 7.4 Variance Decomposition
+### 8.4 Variance Decomposition
 
 | Model | R² |
 |-------|-----|
@@ -501,7 +501,7 @@ If imbalance reflects informed trading, it should exhibit persistence. On real d
 
 Imbalance adds 1.9 percentage points to R² beyond spread and volatility — a 31% improvement. The absolute R² (0.080) is orders of magnitude larger than the synthetic estimate (0.00007), confirming the economic significance of the signal.
 
-### 7.5 Signal Concentration Around Volatility Shocks
+### 8.5 Signal Concentration Around Volatility Shocks
 
 | Regime | Imbalance-Return Correlation |
 |--------|-----------------------------|
@@ -511,7 +511,7 @@ Imbalance adds 1.9 percentage points to R² beyond spread and volatility — a 3
 
 The signal is **stronger** during high volatility periods (r = 0.447 vs 0.270), consistent with information-driven trading intensifying during turbulent conditions. This rules out the liquidity shock explanation (which would predict weaker signal during volatility events).
 
-### 7.6 Synthesis: Informed Trading
+### 8.6 Synthesis: Informed Trading
 
 | Explanation | Supported? | Evidence |
 |-------------|-----------|----------|
@@ -526,7 +526,7 @@ The contrast with synthetic data is stark: persistent real order flow (AR(1) = 0
 
 ![Causality Analysis](plots/causality_analysis.png)
 
-*Figure 4: Granger causality test results. Left: F-statistics by lag — significant at lags 1-3. Right: Variance decomposition — imbalance adds 1.9pp to R² (31% improvement).*
+*Figure 3: Granger causality test results. Left: F-statistics by lag — significant at lags 1-3. Right: Variance decomposition — imbalance adds 1.9pp to R² (31% improvement).*
 
 ## 9. Do Imbalance Velocity and Acceleration Predict Returns? (RQ6)
 
@@ -535,7 +535,7 @@ All prior analysis uses the **level** of depth imbalance. But order flow is dyna
 We compute:
 - **Imbalance velocity** (Δ⁵): first difference of depth imbalance over a 5-observation window
 
-### 8.1 Correlation Analysis
+### 9.1 Correlation Analysis
 
 | Feature | BTC (5,768 rows) | BTC W1 (2,645) | ETH (5,002) |
 |---------|-----------------|----------------|-------------|
@@ -544,7 +544,7 @@ We compute:
 
 Velocity's marginal correlation with returns is near zero across all datasets, confirming that velocity is not independently predictive — its value comes from interaction with the level.
 
-### 8.2 Incremental Predictive Power
+### 9.2 Incremental Predictive Power
 
 | Model | BTC Full | BTC W1 | ETH |
 |-------|----------|--------|-----|
@@ -555,7 +555,7 @@ Velocity's marginal correlation with returns is near zero across all datasets, c
 
 Velocity adds between 8.8% and 22.8% to R² across datasets. The velocity coefficient is consistently **negative** — predicting mean reversion — and is statistically significant for BTC (both full and window 1) but not for ETH.
 
-### 8.3 State-Dependent Effect
+### 9.3 State-Dependent Effect
 
 On the full BTC dataset, velocity's effect amplifies in high-imbalance states:
 
@@ -567,7 +567,7 @@ On the full BTC dataset, velocity's effect amplifies in high-imbalance states:
 
 When imbalance is already extreme, velocity has a strong negative correlation with returns (−0.089). This means: when directional pressure has built up and continues to intensify, it signals exhaustion — the order flow is about to reverse. This is the **mean reversion in persistent order flow** effect.
 
-### 8.4 Discussion
+### 9.4 Discussion
 
 The velocity effect is robust across BTC datasets (11.3% R² gain, significant negative coefficient) but weaker for ETH. The key findings:
 
@@ -578,11 +578,11 @@ The velocity effect is robust across BTC datasets (11.3% R² gain, significant n
 
 ![Velocity Analysis](plots/velocity_analysis.png)
 
-*Figure 5: Velocity analysis — incremental R² across datasets and state-dependent effects.*
+*Figure 4: Velocity analysis — incremental R² across datasets and state-dependent effects.*
 
 ## 10. Conclusion and Future Research
 
-### 9.1 Summary
+### 10.1 Summary
 This research provides robust evidence that order book imbalance predicts future returns on real market data from Kraken BTC/USD and ETH/USD. The key findings are:
 
 1. **RQ1 — Prediction**: Imbalance correlates with future returns, with peak correlation of 0.166 (BTC, 30s) and 0.070 (ETH, 10s). The signal is **time-varying** — ranging from 0.282 in high-information windows to near-zero in others.
@@ -591,11 +591,13 @@ This research provides robust evidence that order book imbalance predicts future
 
 3. **RQ3 — Regimes**: Signal is strongest in high-volatility regimes (r = 0.447) and varies substantially by spread conditions.
 
-4. **RQ4 — Market making**: All strategies lose money across all datasets (−$560 to −$33,118). Adaptive quoting reduces losses by up to 32% in high-signal periods but provides marginal benefit otherwise.
+4. **RQ4 — Market making**: All two-sided market making strategies lose money across all datasets (−$560 to −$33,118). Adaptive quoting reduces losses by up to 32% in high-signal periods but provides marginal benefit otherwise.
 
-5. **RQ5 — Causality**: Imbalance **Granger-causes returns** in 2 of 3 datasets (BTC W1 p=0.005, ETH p=0.004). The causal relationship is **state-dependent** — strongest during high-information periods.
+5. **RQ7 — Advanced strategies**: A one-sided market maker that only trades in the direction favored by imbalance profits on BTC (+$6,089 to +$10,296, Sharpe 7.8–46.1). A high-skew adaptive strategy profits on ETH (+$2,164, Sharpe 41.0). However, profit comes from directional inventory accumulation (83-87% of total), not spread capture — these are effectively **directional trading strategies**, not market making.
 
-6. **RQ6 — Velocity**: Velocity adds 8.8-22.8% to R² with a consistently **negative coefficient** — velocity signals mean reversion in persistent order flow. Effect amplified ∼30× in high-imbalance states.
+6. **RQ5 — Causality**: Imbalance **Granger-causes returns** in 2 of 3 datasets (BTC W1 p=0.005, ETH p=0.004). The causal relationship is **state-dependent** — strongest during high-information periods.
+
+7. **RQ6 — Velocity**: Velocity adds 8.8-22.8% to R² with a consistently **negative coefficient** — velocity signals mean reversion in persistent order flow. Effect amplified ∼30× in high-imbalance states.
 
 **Overarching lessons**:
 - **Time-variation matters**: Market microstructure signals are not constant. A 7.5-minute window can show strong predictability (r=0.28) while the next window shows almost none. Studies must report results across multiple periods.
@@ -603,14 +605,14 @@ This research provides robust evidence that order book imbalance predicts future
 - **Model limitations**: Statistical significance varies dramatically across collection windows — results from a single window should be interpreted with caution.
 - **Synthetic data warning**: White-noise imbalance (AR(1) ≈ 0) produces fundamentally misleading conclusions. Real persistent imbalance (AR(1) ≈ 0.86) reveals effects 10-40× stronger.
 
-### 9.2 Limitations
+### 10.2 Limitations
 - **Data constraints**: 5,768 BTC observations and 5,002 ETH observations from two 10-minute windows
 - **Time-variation unmodeled**: Window-to-window variation in signal strength is documented but not explained
 - **Top-of-book only**: Full depth L2 data would enable more precise imbalance calculation
 - **Model assumptions**: Linear models may miss non-linear interactions
 - **Exchange-specific**: Results from Kraken may not generalize to other venues
 
-### 9.3 Future Research Directions
+### 10.3 Future Research Directions
 - **Extended collection**: 24+ hours of continuous data to model time-varying signal strength
 - **Determinants of signal strength**: Link window-to-window variation to macro events, volatility regimes, and news
 - **Full depth LOB**: Level 2 data for precise imbalance and order flow measurement
