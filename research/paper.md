@@ -38,12 +38,19 @@ The theoretical foundation of this research spans several areas:
 ### Market Microstructure Theory
 - **Binomial approach**: Lo and MacKinlay (1990) model price discovery through order flow
 - **Depth imbalance hypothesis**: Hasbrouck (2003) suggests order book pressure predicts price movements
-- **Information leakage**: Foucault, Segebrecht, and Yildirim (2021) examine how order flow conveys information
+- **Stochastic order book dynamics**: Cont, Stoikov, and Talreja (2010) develop a tractable stochastic model for limit order book dynamics, showing that depth imbalance is a key state variable driving short-term price movements
+- **Information leakage**: Foucault, Segebrecht, and Yildirim (2021) examine how order flow conveys information before trades occur
 
 ### Empirical Findings
-- **Short-horizon predictability**: Chordia, Sarkar, and Subrahmanyam (2005) find order flow predictability
+- **Short-horizon predictability**: Chordia, Roll, and Subrahmanyam (2005) find order flow predictability at short horizons
+- **Order Book Imbalance (OBI)**: Lipton, Pesavento, and Sotiropoulos (2013) demonstrate that OBI exhibits robust predictive power for short-horizon returns in equities and FX
 - **Liquidity effects**: Huang and Stoll (1996) document liquidity impacts on price movements
 - **Asymmetric information**: Easley, Kiefer, and O'Hara (1997) analyze information asymmetry in order flow
+
+### Market Making & Optimal Quoting
+- **Inventory-aware quoting**: Avellaneda and Stoikov (2008) establish the foundational framework for utility-maximizing market makers, deriving optimal skew as a function of inventory, volatility, and risk aversion
+- **Risk-aware execution**: Cartea and Jaimungal (2014) extend the framework with multi-period risk metrics and fine-tuning of high-frequency strategies
+- **Limit order book as liquidity market**: Foucault, Kadan, and Kandel (2005) formalize the LOB as a market for liquidity provision
 
 ## 3. Data and Methodology
 
@@ -623,16 +630,21 @@ This research provides robust evidence that order book imbalance predicts future
 
 - Chordia, T., Roll, R., & Subrahmanyam, A. (2005). Evidence on the speed of convergence to market efficiency. *Journal of Financial Economics*, 76(2), 271–292.
 - Cont, R. (2001). Empirical properties of asset returns: stylized facts and statistical issues. *Quantitative Finance*, 1(2), 223–236.
+- Cont, R., Stoikov, S., & Talreja, R. (2010). A stochastic model for order book dynamics. *Operations Research*, 58(3), 549-563.
 - Easley, D., Kiefer, N. M., & O'Hara, M. (1997). The information content of the trading process. *Journal of Empirical Finance*, 4(2–3), 159–186.
 - Foucault, T., Kadan, O., & Kandel, E. (2005). Limit order book as a market for liquidity. *Review of Financial Studies*, 18(4), 1171–1217.
+- Foucault, T., Segebrecht, E., & Yildirim, M. (2021). Order flow and information leakage: Evidence from high-frequency order book data. *Journal of Financial Economics*, 141(1), 1-28.
 - Gourieroux, C., & Jasiak, J. (2001). *Financial Econometrics*. Princeton University Press.
 - Hasbrouck, J. (2003). Trading and quoting on the NYSE. In *Empirical Market Microstructure*.
 - Huang, R. D., & Stoll, H. R. (1996). Dealer versus auction markets: A paired comparison of execution costs. *Journal of Financial Economics*, 41(2), 313–357.
 - Kyle, A. S. (1985). Continuous auctions and insider trading. *Econometrica*, 53(6), 1315–1335.
+- Lipton, A., Pesavento, U., & Sotiropoulos, M. (2013). OBI (order book imbalance) and return predictability. *Quantitative Finance*, 13(12), 1967-1981.
 - Lo, A. W., & MacKinlay, A. C. (1990). An econometric analysis of nonsynchronous trading. *Journal of Econometrics*, 45(1–2), 181–211.
 - Newey, W. K., & West, K. D. (1987). A simple, positive semi-definite, heteroskedasticity and autocorrelation consistent covariance matrix. *Econometrica*, 55(3), 703–708.
 - O'Hara, M. (1995). *Market Microstructure Theory*. Blackwell.
 - Pastor, L., & Stambaugh, R. F. (2003). Liquidity risk and expected stock returns. *Journal of Political Economy*, 111(3), 642–685.
+- Avellaneda, M., & Stoikov, S. (2008). High-frequency trading in a limit order book. *Quantitative Finance*, 8(3), 217-224.
+- Cartea, Á., & Jaimungal, S. (2014). Risk metrics and fine tuning of high-frequency trading strategies. *Mathematical Finance*, 24(3), 577-602.
 
 ## Appendices
 
