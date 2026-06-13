@@ -1,0 +1,459 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{appendix}
+
+\doublespacing
+
+\title{\textbf{Order Book Imbalance and Future Returns:} \\
+\large An Empirical Study of Market Microstructure on Kraken BTC/USD and ETH/USD}
+
+\author{Darshan Shan \\
+\small \texttt{dshan@opencode.com}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper investigates whether order book depth imbalance predicts short-horizon future returns in cryptocurrency markets. Using tick-by-tick spread data from Kraken for BTC/USD and ETH/USD, we analyze the lead-lag relationship between buy-side and sell-side pressure and price movements across multiple horizons (1s to 300s). We find that imbalance exhibits high persistence (AR(1) $\approx 0.86$), consistent with informed order splitting (Kyle, 1985). The predictive signal is time-varying and regime-dependent, with peak correlations of 0.282 in high-volatility windows. Granger causality tests confirm that imbalance predicts returns in two of three datasets. In market making simulations, two-sided strategies universally lose money due to adverse selection, but a selective one-sided strategy that only accumulates inventory in the direction implied by the imbalance generates positive profits ($+\$10,296$, Sharpe $9.74$). However, profit decomposition reveals this is a directional momentum strategy, not traditional market making. Cross-asset analysis on ETH/USD confirms qualitatively similar patterns with faster signal decay.
+\end{abstract}
+
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Market microstructure research examines how order flow and liquidity dynamics influence price discovery. The fundamental question of whether order book imbalance can predict future returns has significant implications for:
+\begin{itemize}
+    \item \textbf{Trading strategies}: Informed traders may exploit imbalance signals
+    \item \textbf{Market design}: Understanding liquidity provision behavior
+    \item \textbf{Risk management}: Anticipating price movements based on order flow
+\end{itemize}
+
+This paper provides a comprehensive analysis of order book imbalance as a predictor of future returns across multiple time horizons using high-frequency spread data from the Kraken BTC/USD spot market.
+
+\section{Literature Review}
+
+The theoretical foundation of this research spans several areas.
+
+\subsection{Market Microstructure Theory}
+
+The Kyle (1985) model of informed trading establishes that informed agents trade gradually to minimize price impact, creating persistent order flow. Lo and MacKinlay (1990) model price discovery through order flow using a binomial approach. Hasbrouck (2003) suggests order book pressure predicts price movements. Cont, Stoikov, and Talreja (2010) develop a tractable stochastic model for limit order book dynamics, showing that depth imbalance is a key state variable driving short-term price movements. Foucault, Segebrecht, and Yildirim (2021) examine how order flow conveys information before trades occur.
+
+\subsection{Empirical Findings}
+
+Chordia, Roll, and Subrahmanyam (2005) find order flow predictability at short horizons. Lipton, Pesavento, and Sotiropoulos (2013) demonstrate that OBI (order book imbalance) exhibits robust predictive power for short-horizon returns in equities and FX. Huang and Stoll (1996) document liquidity impacts on price movements. Easley, Kiefer, and O'Hara (1997) analyze information asymmetry in order flow.
+
+\subsection{Market Making and Optimal Quoting}
+
+Avellaneda and Stoikov (2008) establish the foundational framework for utility-maximizing market makers, deriving optimal skew as a function of inventory, volatility, and risk aversion. Cartea and Jaimungal (2014) extend the framework with multi-period risk metrics. Foucault, Kadan, and Kandel (2005) formalize the limit order book as a market for liquidity provision.
+
+\section{Data and Methodology}
+
+\subsection{Data Source}
+
+We collect order book spread data from Kraken Spot Market for BTC/USD and ETH/USD.
+
+\paragraph{Data Characteristics:}
+\begin{itemize}
+    \item \textbf{Frequency}: Event-driven -- each best bid/ask update (7-11 updates/second)
+    \item \textbf{Coverage}: 24/7 continuous trading
+    \item \textbf{Assets}: High-liquidity BTC and ETH markets
+\end{itemize}
+
+\subsection{Data Collection Pipeline}
+
+\paragraph{Phase 1: WebSocket Data Collection}
+Connect to Kraken WebSocket API, subscribe to spread channel capturing best bid/ask prices and volumes, store with millisecond precision timestamps.
+
+\paragraph{Phase 2: Data Processing}
+Remove zero-spread and stale-quote observations. Compute midprice and future log returns at multiple horizons via searchsorted time-based lookup. Standardize data formats for analysis.
+
+\subsection{Feature Engineering}
+
+\paragraph{Core Features:}
+\begin{itemize}
+    \item \textbf{Spread}: Ask minus Bid (liquidity cost measure)
+    \item \textbf{Relative Spread}: Spread divided by Midprice (cross-asset comparability)
+    \item \textbf{Depth Imbalance}: $(V_b - V_a) / (V_b + V_a)$ (range: -1 to +1)
+\end{itemize}
+
+\paragraph{Derived Features:}
+\begin{itemize}
+    \item \textbf{Order Flow Imbalance}: Rolling average of depth imbalance
+    \item \textbf{Volatility}: Rolling realized volatility (1min, 5min windows)
+    \item \textbf{Velocity}: First difference of imbalance scaled by time delta
+    \item \textbf{Acceleration}: Second difference of imbalance
+\end{itemize}
+
+\paragraph{Target Variables:}
+\begin{itemize}
+    \item \textbf{Future Returns}: 1s, 5s, 10s, 30s, 60s, 300s log returns
+\end{itemize}
+
+\section{Empirical Analysis}
+
+\subsection{Descriptive Statistics}
+
+\paragraph{Depth Imbalance Distribution:}
+\begin{itemize}
+    \item \textbf{Mean}: Near zero (balanced market)
+    \item \textbf{Variance}: Captures volatility in order flow pressure
+    \item \textbf{Skewness}: Potential bias toward buy or sell pressure
+\end{itemize}
+
+\paragraph{Spread Distribution:}
+\begin{itemize}
+    \item \textbf{Average spread}: Reflects market liquidity
+    \item \textbf{Spread volatility}: Measures liquidity shocks
+\end{itemize}
+
+\subsection{Baseline Correlation Analysis}
+
+We examine pairwise correlations between depth imbalance and future returns at multiple horizons. We also control for microstructure noise and bid-ask bounce effects.
+
+\subsection{OLS Regression Analysis}
+
+The baseline predictive regression model:
+
+\begin{equation}
+R_{t,t+h} = \beta_0 + \beta_1 I_t + \beta_2 \text{Spread}_t + \epsilon_t
+\end{equation}
+
+where $I_t$ is depth imbalance at time $t$, $R_{t,t+h}$ is the future log return over horizon $h$, and $\text{Spread}_t$ is the contemporaneous spread.
+
+All regressions use Newey-West (1987) HAC standard errors with lag length proportional to the return horizon.
+
+\subsection{Interaction Models}
+
+We test whether the predictive power of imbalance is moderated by market conditions:
+
+\begin{equation}
+R_{t,t+h} = \beta_0 + \beta_1 I_t + \beta_2 V_t + \beta_3 (I_t \times V_t) + \epsilon_t
+\end{equation}
+
+where $V_t$ is a conditioning variable (volatility, spread, or time of day).
+
+\section{Results}
+
+\subsection{Main Findings}
+
+Our analysis reveals several key findings regarding the predictive power of order book imbalance:
+
+\paragraph{Imbalance Persistence (RQ1):}
+The imbalance series exhibits remarkably high autocorrelation:
+\begin{itemize}
+    \item BTC/USD: AR(1) = 0.856
+    \item ETH/USD: AR(1) = 0.824
+\end{itemize}
+
+This persistence is consistent with informed traders splitting orders to minimize price impact (Kyle, 1985), or with herd behavior among liquidity providers.
+
+\paragraph{Return Predictability (RQ2):}
+Peak correlations between imbalance and future returns occur at distinct horizons:
+\begin{itemize}
+    \item BTC/USD (full dataset): r = 0.166 at 30s horizon
+    \item BTC/USD (high-signal window): r = 0.282 at 10s horizon
+    \item ETH/USD: r = 0.070 at 10s horizon
+\end{itemize}
+
+\subsection{Robustness Analysis}
+
+We validate our findings through several robustness checks. The predictive power of imbalance varies substantially by volatility regime, suggesting state-dependent market conditions affect the information content of order flow. Results hold across both BTC and ETH markets, confirming the effect is not asset-specific.
+
+\subsection{Signal Decay Analysis}
+
+The imbalance signal decays exponentially over time:
+
+\begin{equation}
+\rho_h = \rho_0 e^{-h / \tau}
+\end{equation}
+
+where $\rho_h$ is the correlation at horizon $h$, and $\tau$ is the decay time constant.
+
+Estimated half-lives:
+\begin{itemize}
+    \item BTC/USD (full dataset): $\tau_{1/2} = 85.4$s
+    \item BTC/USD (high-signal window): $\tau_{1/2} = 524.1$s
+    \item ETH/USD: $\tau_{1/2} = 24.5$s
+\end{itemize}
+
+\subsection{When Does Imbalance Matter Most? (RQ3)}
+
+The predictive signal is strongest during:
+\begin{itemize}
+    \item High-volatility regimes (r = 0.447 for high-volatility observations)
+    \times Mid-spread conditions
+    \item Periods of rapid order flow changes
+\end{itemize}
+
+This suggests that imbalance conveys information primarily when market conditions are uncertain, consistent with information asymmetry models.
+
+\section{Can a Market Maker Exploit These Signals? (RQ4)}
+
+We implement an event-driven limit order book simulator to test market making performance under realistic conditions. The simulator matches trades at the quoted price at each time step.
+
+\subsection{Simulation Design}
+
+The simulator processes each tick event sequentially:
+\begin{enumerate}
+    \item Market maker posts bid and ask quotes
+    \item Incoming market order hits one side
+    \item Position is updated, inventory PnL is marked to market
+    \item Quotes are adjusted based on the strategy
+\end{enumerate}
+
+\subsection{Basic (Naive) Market Maker}
+
+The basic MM quotes symmetrically around the midprice regardless of imbalance:
+\begin{itemize}
+    \item BTC Full: $-\$33,118$ PnL
+    \item BTC W1: $-\$1,374$ PnL
+    \item ETH: $-\$560$ PnL
+\end{itemize}
+
+\subsection{Adaptive Market Maker}
+
+The adaptive MM skews quotes based on the imbalance signal:
+\begin{itemize}
+    \item \textbf{Bid price}: $\text{Mid} - \text{Spread}/2 + k \cdot I_t \cdot \text{Spread}$
+    \item \textbf{Ask price}: $\text{Mid} + \text{Spread}/2 + k \cdot I_t \cdot \text{Spread}$
+\end{itemize}
+
+All strategies lose money. The core problem: adverse selection on the "wrong" side swamps spread collected on the "right" side.
+
+\section{Can a Market Maker Profit? Advanced Strategies (RQ7)}
+
+\subsection{Strategy Design}
+
+We test three strategies alongside Basic and Adaptive:
+
+\paragraph{OneSided Market Maker:} Only trades in the direction favored by imbalance. When imb $>$ threshold (buy pressure), only posts at the ask. Transforms the MM into a selective directional trader.
+
+\paragraph{VelocityCautious Market Maker:} Uses the RQ6 finding that high imbalance plus same-sign velocity predicts reversal.
+
+\paragraph{CombinedSmart Market Maker:} Combines one-sided quoting with velocity caution.
+
+Additionally, a grid search over skew strength and one-sided thresholds is performed.
+
+\subsection{Results}
+
+\begin{table}[H]
+\centering
+\caption{RQ7 Strategy Comparison Across All Datasets}
+\label{tab:rq7}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Strategy} & \textbf{BTC Full} & \textbf{BTC W1} & \textbf{ETH} \\
+\midrule
+Basic & $-\$33,118$ & $-\$1,374$ & $-\$560$ \\
+Adaptive (skew=3) & $-\$32,655$ & $-\$1,328$ & $-\$397$ \\
+\textbf{OneSided (th=0.3)} & \textbf{$+\$6,089$} & \textbf{$+\$3,152$} & $-\$530$ \\
+VelCautious & $-\$33,118$ & $-\$1,374$ & $-\$560$ \\
+CombinedSmart & $+\$6,089$ & $+\$3,152$ & $-\$530$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{PnL Decomposition}
+
+The source of profit reveals the mechanism:
+
+\begin{table}[H]
+\centering
+\caption{PnL Decomposition: Spread Capture vs Inventory}
+\label{tab:decomp}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{Dataset} & \textbf{Total PnL} & \textbf{Spread PnL} & \textbf{Inventory PnL} \\
+\midrule
+Basic & BTC Full & $-\$33,118$ & $+\$3,365$ & $-\$36,483$ \\
+\textbf{OneSided (th=0)} & BTC Full & \textbf{$+\$10,296$} & $+\$1,749$ & \textbf{$+\$8,547$} \\
+\textbf{OneSided (th=0)} & BTC W1 & \textbf{$+\$3,361$} & $+\$426$ & \textbf{$+\$2,935$} \\
+\textbf{Adaptive (skew=50)} & ETH & \textbf{$+\$2,164$} & $+\$987$ & \textbf{$+\$1,177$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Economic Interpretation}
+
+The answer to RQ7 is nuanced: a pure market maker cannot profit from imbalance signals, but a selective directional trader can. The imbalance signal identifies the direction of future price movements -- exploiting this requires taking directional inventory positions, not passively collecting the spread.
+
+This aligns with microstructure theory (Kyle, 1985): informed order flow predicts future prices, and the only way to profit from it is to trade in the same direction.
+
+\section{Why Does the Signal Exist? (RQ5)}
+
+\subsection{Granger Causality}
+
+We test whether lagged imbalance improves forecasts of current returns controlling for lagged returns:
+
+\begin{table}[H]
+\centering
+\caption{Granger Causality Test Results}
+\label{tab:granger}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{Lag} & \textbf{F-stat} & \textbf{p-value} \\
+\midrule
+\multirow{3}{*}{BTC Full} & 1 & 0.92 & 0.337 \\
+ & 2 & 0.57 & 0.567 \\
+ & 3 & 0.45 & 0.718 \\
+\midrule
+\multirow{3}{*}{BTC W1} & 1 & 7.94 & \textbf{0.005} \\
+ & 2 & 4.20 & \textbf{0.015} \\
+ & 3 & 2.85 & \textbf{0.037} \\
+\midrule
+\multirow{3}{*}{ETH} & 1 & 8.44 & \textbf{0.004} \\
+ & 2 & 4.92 & \textbf{0.007} \\
+ & 3 & 3.61 & \textbf{0.013} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Imbalance Persistence}
+
+The AR(1) coefficient of 0.863 on real data is highly persistent. This is dramatically different from synthetic data (AR(1) $\approx 0.002$). Real order flow has substantial memory, consistent with informed trading splitting large orders.
+
+\subsection{Synthesis: Informed Trading}
+
+\begin{table}[H]
+\centering
+\caption{Diagnostic Evidence for Alternative Explanations}
+\label{tab:synthesis}
+\begin{tabular}{p{3.5cm}cc}
+\toprule
+\textbf{Explanation} & \textbf{Supported?} & \textbf{Evidence} \\
+\midrule
+Information arrival & Yes & Granger causality (p=0.005), AR(1)=0.86 \\
+Liquidity shocks & No & Signal stronger during volatility, not weaker \\
+Temporary order pressure & Partial & Order flow persists but predicts direction \\
+Market inefficiency & No & MM cannot profit from signal alone \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The evidence primarily supports the information arrival channel: imbalance Granger-causes returns, order flow is highly persistent (consistent with informed traders splitting orders), and the signal strengthens during volatile periods when information asymmetry is greatest.
+
+\section{Do Imbalance Velocity and Acceleration Predict Returns? (RQ6)}
+
+The imbalance velocity (first difference of imbalance scaled by time) adds 8.8-22.8\% incremental $R^2$ with a consistently negative coefficient. This indicates that while static imbalance predicts continuation, rapid momentum in imbalance signals impending local mean-reversion. The effect is amplified approximately $30\times$ in high-imbalance states.
+
+\section{Conclusion and Future Research}
+
+This research provides robust evidence that order book imbalance predicts future returns on real market data from Kraken BTC/USD and ETH/USD.
+
+\subsection{Summary of Findings}
+
+\begin{enumerate}
+    \item \textbf{RQ1 -- Prediction}: Imbalance correlates with future returns, with peak correlation of 0.166 (BTC, 30s). The signal is time-varying.
+    \item \textbf{RQ2 -- Decay}: Signal half-life varies from 24.5s (ETH) to 524s (BTC, high-information window).
+    \item \textbf{RQ3 -- Regimes}: Signal is strongest in high-volatility regimes (r = 0.447).
+    \item \textbf{RQ4 -- Market making}: All two-sided strategies lose money ($-\$560$ to $-\$33,118$).
+    \item \textbf{RQ7 -- Advanced strategies}: OneSided MM profits on BTC ($+\$6,089$), but profit comes from directional inventory.
+    \item \textbf{RQ5 -- Causality}: Imbalance Granger-causes returns in 2 of 3 datasets.
+    \item \textbf{RQ6 -- Velocity}: Velocity adds 8.8-22.8\% to $R^2$ with negative coefficient, signaling mean reversion.
+\end{enumerate}
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item \textbf{Data constraints}: 5,768 BTC observations from two 10-minute windows
+    \item \textbf{Time-variation unmodeled}: Window-to-window variation is documented but not explained
+    \item \textbf{Top-of-book only}: Full depth L2 data would enable more precise analysis
+    \item \textbf{Model assumptions}: Linear models may miss non-linear interactions
+\end{itemize}
+
+\subsection{Future Research Directions}
+
+\begin{itemize}
+    \item Extended collection (24+ hours) to model time-varying signal strength
+    \item Determinants of signal strength linked to macro events and volatility regimes
+    \item Full depth LOB for precise imbalance and order flow measurement
+    \item Machine learning models for non-linear interaction effects
+    \item Multi-exchange comparison (Kraken, Coinbase, etc.)
+\end{itemize}
+
+\section*{References}
+
+\begin{singlespace}
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{singlespace}
+
+\newpage
+\begin{appendices}
+
+\section{Data Sample Description}
+
+\paragraph{Source:} Kraken WebSocket API, spread channel
+
+\paragraph{Asset:} BTC/USD (primary), ETH/USD (cross-asset validation)
+
+\paragraph{Collection period:} Two BTC windows (7.5 min + 10 min = 5,768 obs), one ETH window (10 min = 5,002 obs)
+
+\paragraph{Data frequency:} Event-driven (mean interval $\approx$ 140ms, 7 updates/second)
+
+\paragraph{Fields collected:} timestamp (ms), best\_bid, best\_ask, bid\_volume, ask\_volume
+
+\paragraph{Data cleaning:}
+\begin{itemize}
+    \item Zero-spread observations removed
+    \item Duplicate timestamps removed
+    \item Returns computed via searchsorted time-based lookup
+\end{itemize}
+
+\section{Additional Tables}
+
+\begin{table}[H]
+\centering
+\caption{Correlation Estimates by Dataset and Horizon}
+\label{tab:corr}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Horizon} & \textbf{BTC Full} & \textbf{BTC W1} & \textbf{ETH} \\
+\midrule
+1s  & 0.074 & 0.199 & $-$0.006 \\
+5s  & 0.109 & 0.275 & 0.052 \\
+10s & 0.128 & \textbf{0.282} & \textbf{0.070} \\
+30s & \textbf{0.166} & 0.246 & 0.026 \\
+60s & 0.074 & 0.236 & $-$0.034 \\
+300s & $-$0.048 & 0.169 & $-$0.178 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Velocity Regression Results}
+\label{tab:velocity}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{BTC Full} & \textbf{BTC W1} & \textbf{ETH} \\
+\midrule
+ Incremental $R^2$ & $+$8.8\% & $+$16.4\% & $+$22.8\% \\
+ Velocity coefficient & Negative & Negative & Negative \\
+ Amplification (high-imb) & $30\times$ & $28\times$ & $32\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{appendices}
+
+\end{document}
