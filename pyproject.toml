@@ -1,7 +1,7 @@
 [project]
 name = "market-microstructure"
 version = "0.1.0"
-description = "Quantitative research on limit order book dynamics using Binance spot data"
+description = "Quantitative research on limit order book dynamics using Kraken spot data"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

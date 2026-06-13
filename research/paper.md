@@ -2,7 +2,7 @@
 
 ## Abstract
 
-This research paper investigates whether order book imbalance predicts future returns in the cryptocurrency market. Using tick-by-tick spread data from Kraken for XBT/USD and ETH/USD, we analyze the relationship between buy-side and sell-side pressure and short-horizon price movements. The study follows a systematic approach combining data collection, feature engineering, and statistical analysis to determine if depth imbalance contains predictive information for market microstructure dynamics. All analysis is conducted on real market data (5,768 XBT/USD observations and 5,002 ETH/USD observations across separate collection windows) with robustness checks on calibrated synthetic data.
+This research paper investigates whether order book imbalance predicts future returns in the cryptocurrency market. Using tick-by-tick spread data from Kraken for XBT/USD and ETH/USD, we analyze the relationship between buy-side and sell-side pressure and short-horizon price movements. The study follows a systematic approach combining data collection, feature engineering, and statistical analysis to determine if depth imbalance contains predictive information for market microstructure dynamics. All analysis is conducted on real market data (5,768 XBT/USD observations and 5,002 ETH/USD observations across separate collection windows) with sensitivity checks on calibrated synthetic data.
 
 ## Table of Contents
 
